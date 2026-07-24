@@ -1,0 +1,12 @@
+// Fixed width for the footer action buttons (replaces inline style={{ width: '150px' }}).
+
+.actionButton {
+  width: 150px;
+}
+
+// Dev-only toolbar holding the "Seed Mock Data" button (not shown in production).
+.devToolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "abf-requisition-client-side-solution",
+    "id": "92fa99ab-5c16-4eb7-b71d-af85fa64f8ef",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.23.0"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "abf-requisition description"
+      },
+      "longDescription": {
+        "default": "abf-requisition description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "abf-requisition Feature",
+        "description": "The feature that activates elements of the abf-requisition solution.",
+        "id": "2ce52b1b-f5ec-4f46-97c1-076b0a810692",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/abf-requisition.sppkg"
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "Tenant ID": "Tenant ID",
+    "Client ID": "Client ID",
+    "Client Secret": "Client Secret",
+    "Site URL": "https://<TenantName>.sharepoint.com/sites/<SiteName>"
+}
+
+## Copy this file to docs/azure_key.txt (or docs/azure_key.json), fill in real values,
+## and remove this comment line. The real azure_key.txt / azure_key.json are gitignored —
+## never commit them (CLAUDE.md mandate).

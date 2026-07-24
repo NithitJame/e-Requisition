@@ -1,0 +1,161 @@
+#spLeftNav {
+    display: none !important;
+}
+
+#spCommandBar {
+    display: none !important;
+}
+
+#spSiteHeader {
+    display: none !important;
+}
+
+#sp-appBar {
+    display: none !important;
+}
+
+#SuiteNavPlaceholder {
+    display: none !important;
+}
+
+.bg-info-c1 {
+    background-color: #5AB9EA !important;
+}
+
+.un-border {
+    border: unset !important;
+}
+
+.btn-outline-c1 {
+    background-color: #84CEEB !important;
+    border-color: #84CEEB !important;
+}
+
+/* โครงสร้างหลัก */
+#sidebar-wrapper {
+    min-height: 100vh;
+    width: 320px;
+    /* ความกว้างตอนเปิดปกติ */
+    transition: width 0.25s ease-out;
+    overflow-x: hidden;
+    white-space: nowrap;
+    /* ป้องกันข้อความตกบรรทัดตอนกำลังหด */
+}
+
+/* พื้นที่เนื้อหาหลัก */
+#page-content-wrapper {
+    flex-grow: 1;
+    min-width: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+/* ─── เมื่อกดปุ่มสั่งหด (Toggled) ────────────────────── */
+
+/* ลดความกว้างของ Sidebar ให้เหลือแค่พอดีไอคอน */
+#wrapper.toggled #sidebar-wrapper {
+    /* width: 75px; */
+    width: 0px;
+}
+
+/* ซ่อนข้อความทั้งหมดที่อยู่ในคลาส sidebar-text */
+#wrapper.toggled .sidebar-text {
+    display: none;
+}
+
+/* จัดกึ่งกลางโลโก้/หัวข้อเมื่อ Sidebar หด */
+#wrapper.toggled .sidebar-heading {
+    text-align: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    padding: 15px 0 !important;
+}
+
+/* จัดให้ไอคอนอยู่กึ่งกลางเมนูเมื่อ Sidebar หด */
+#wrapper.toggled .list-group-item {
+    text-align: center;
+    padding: 15px 0 !important;
+}
+
+/* เอาช่องว่างด้านขวาของไอคอนออกเมื่อหดตัว */
+#wrapper.toggled .list-group-item i {
+    margin-right: 0 !important;
+    font-size: 1.4rem;
+    /* ขยายไอคอนให้เด่นขึ้นตอนหด */
+}
+
+/* ปรับแต่งสไตล์ปุ่มทั่วไป */
+.sidebar-heading {
+    height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.navbar {
+    height: 60px;
+}
+
+.list-group-item-action:hover {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    opacity: 0.8;
+}
+
+.list-group-item.active-menu {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    /* เพิ่มพื้นหลังสีขาวจางๆ */
+    color: #ffffff !important;
+    border-left: 4px solid #fff !important;
+    /* เพิ่มเส้นขีดสีขาวหนาๆ ด้านซ้ายให้เด่นชัด */
+    padding-left: calc(3rem - 4px) !important;
+    /* ปรับลด padding เพื่อชดเชยกับเส้นขีดขอบหนา */
+}
+
+.card-custom-main {
+    border-radius: 0 !important;
+    border-color: #e7eaec !important;
+}
+
+.breadcrumb .BreadCrumbCurrent {
+    color: #0E4A87;
+}
+
+.breadcrumb a {
+    color: #bbb;
+    text-decoration: none !important;
+}
+
+.rounded-xl {
+    border-radius: 30px !important;
+}
+
+.btn-custom-1 {
+    border-color: #f0f0f0 !important;
+    background-color: #f0f0f0 !important;
+    color: #000000 !important;
+}
+
+.hr-dashed {
+    border: none;
+    border-top: 2px dashed #ccc;
+    /* ตัวอย่าง: เส้นประสีเทา หนา 2px */
+}
+
+.hr-bold {
+    border: none;
+    border-top: 2px solid #000;
+}
+
+article>div {
+    overflow: hidden !important;
+}
+
+.tag-custom-1 {
+    width: 100%;
+    color: rgb(86, 128, 233);
+    cursor: default;
+    border: 1px solid rgb(86, 128, 233);
+    padding: 10px;
+    text-align: center;
+    border-radius: 30px !important;
+}

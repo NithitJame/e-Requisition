@@ -1,0 +1,82 @@
+M_Month: 3c836d1f-425d-42e9-a0e4-4b2f6ab9c68d
+M_Channel: cbe0ea83-aa48-4e70-b51a-d04b6032f42c
+M_CustomerGroup: a4146ef7-fafd-4fd9-9f56-24630bbf18ba
+M_Customer_SubChannel: 4c9d7316-1669-466f-894e-79ba80187b8b
+M_CustomerSubGroup: 62e8b93e-ab5c-4001-a3e5-d5c009bcc62b
+AB_CustomProject: a9900f65-1c7c-467d-a55d-61f157c503ea
+Attachment of invoice File: dc46b175-7e1f-412d-a66f-2f64946d0e1c
+Attachment of receipt File: ed841d33-0c0d-4581-a123-fc011d5906b3
+Database_Connection: 121d2d0e-04bc-43e1-9dc7-2c79a1edf420
+Issue Log: 57fdeed0-083c-45f8-b4c8-28d940c2fc5f
+Matching Tax: 4d174a00-b74a-4e40-b8a6-2a15c3f62b76
+M_Activity_Limit: d6ff3bff-5006-4c05-84dc-94ca5735be46
+M_Category_Permission: 069c9330-9f8e-4f7f-9245-72eb26ce45b1
+M_ChargedToCostCenterAP: 1fa2e5d6-89f9-4901-94a1-0d4ad6d4f422
+M_ChargedToCostCenterDKSH: 2a4c20d2-f923-41f4-b7b1-0da45d350c19
+M_ChargedToPrincipleSE: 4137620c-b228-4e99-948a-de19ce89fa96
+M_Customers: e5d0624e-4c80-4b82-a1fb-c5026bc3797d
+M_Distributor: 501ed2d5-109f-404e-8e19-fc87edfb3aa6
+M_ExFact_Hierarchy_Lv2: ca609be0-2a41-4395-b500-cf806c7b914c
+M_IncomeType: c370c2c5-4b7e-40cc-b1f8-9a7997243531
+M_MajorName: 02c79a0e-d6ae-4f0e-afea-766b433cefb8
+M_Mapping_SubGroup: bf8a8097-da56-4d9e-a574-0d3614af34ab
+M_MasterPayment: 2b6e9ddd-1f2d-4862-81a4-19c083a6f575
+M_Matching_ApproverLimit: 7fa1caa4-c5d3-4987-a0b0-2819c0134b27
+M_Payment_ApproverLimit: 81838803-3a3b-46b0-b7bd-d27d77b8b454
+M_PA_Allocation: 16caad34-6ee7-46ca-a2da-a7d94b81ee3f
+M_PR_ApproverLimit: 2229c7e7-83a5-4c85-ad3e-7ec019e6840a
+M_PR_Approvers: 28fa6fdf-3cd8-4702-942d-19f71e52d405
+M_TaxCode: 97bc5533-3d62-4b43-8713-6ed61377674e
+M_TA_Allocation: e343f9eb-05a7-4ee3-95f8-880d8b11552b
+M_WBS: 5de2c16b-16af-4ff7-be18-fa5a22e090ca
+M_WithHoldingTax: e78e4d80-0771-4b31-b0c8-963b25934ccc
+Notification List: c1fe53b0-31b2-4411-b282-ccd814e5277e
+PA Documents: f82da3f1-f396-449e-844f-f19427df1ce7
+PA Workflow History: 14984cf6-71d8-43d1-8b64-3dbdb36f934e
+Payment Documents: f2bdd23c-26ee-49b5-8b79-9fd62f2d2994
+Payment Expense Form DKSH: e43680d5-1833-4a5a-a88c-d437c369e700
+Payment Matching Approval: 63b051e2-e4bb-484b-8108-727244048ec6
+Payment PA Charge to CBU: 545ab378-ec26-4a95-bfe5-78aded1d6203
+Payment PA Expenses: a18d9f93-6ee4-4a1d-bb86-de610d5b01f4
+Payment PA Transaction: c5a418c5-b69e-42ce-8615-0a2a8a9f0f08
+Payment Request Form DKSH: 1896b154-cc28-4dd4-9c96-16f9f6952653
+Payment SE from DKSH: c9992e75-d57b-42f8-aee2-03e821cc8241
+Payment Workflow History: 3fade322-5320-430c-8a7a-c709b23a5513
+PR All Requisition Detail: 1f71dabc-6a8f-4c4e-b4ce-bec47024cfdd
+PR Approval: 01f145f4-f24d-41b8-8113-3f6010201974
+PR Detail: 2475b4cf-46e9-4caf-98a6-22ad23ec0757
+PR Header: f1e33bf7-90e6-44e5-8a3d-464714253535
+PR Workflow History: fc8b5ba7-6683-433a-af9a-487d80cf5ce1
+Project Policy Item List: 6e1e5468-c5b5-4a01-9137-8386325bcb56
+QAD User: 2cb22da1-149c-482e-9d33-4a8f36e17535
+REQ_EXDIS_SALESPLAN_AMOUNT: fd39f531-1015-451f-987e-43238a6ad8e7
+REQ_TITD_PLAN: 0e19644d-1da9-48ee-8593-97654a2db02e
+Running Number: d5cdbc58-948e-467a-afff-51d59c1c3fc3
+SE Documents: abc69f4f-dc2b-46b8-8781-602b811a6bdc
+SE Matching Workflow History: 81e9e716-3de5-427b-ba96-78940a471b5f
+TA Approval: b47f518d-c611-4f47-97fc-59b12ba2179b
+TA Charge to CBU: 0990ab7d-189d-4512-a42e-15eadfdfc4eb
+TA Detail: beed0918-202f-4920-9693-64250a0f6088
+TA Documents: e69fb3cb-0ec1-4f9d-b1d8-be90782886ee
+TA ExDis Sales Amount: 43130c3e-e05e-4859-89e4-0924ab04ce08
+TA Expenses: 5f5f4d29-e427-4a26-b093-44fb79c4bb39
+TA Report Payment: 38ffe8f0-9824-45b1-8751-74a2304aa9bd
+TA Setup Approved: 5e5bd818-8d82-4aa1-90ad-992584f1b3ad
+TA Setup Calculated: 6a9ca088-f78a-48b7-bc66-d757e723ec83
+TA Setup Unapproved: ccd807ae-54b2-475b-b014-ca21382e8f6b
+TA Summary: 7762742f-1e17-4332-88ec-e84a9d7bfbee
+TA Workflow History: 2bbfd947-dcb0-47de-bfdc-0c157e07c1bd
+TRAN_REQ_EXDIS_FOCOFFINVOICE_AMOUNT: 2afdb7d8-ea2a-44c2-b1e5-97c0581d7e48
+TRAN_REQ_EXDIS_SALESPLAN_AMOUNT: 81818218-55ed-4ee4-be93-fd2bd60efee8
+TRAN_REQ_TITD_PLAN: b8217404-eaa0-4918-9df3-d0f0844e20fc
+M_AccountName: ae27f821-4b97-4f56-8af9-3b4c87ea82be
+M_Category: fa9a0674-c066-4f8d-bf84-729d33aaab87
+M_ExFact_Hierarchy_Lv5: b4fdbaaa-96a9-462a-80ae-fe3e9c098bd8
+M_ExpenseType: f334e309-440f-4eac-b647-1d8a6dfba21a
+M_MajorGroupName: d7fcf299-bebe-477d-be75-9d7df21d7294
+M_PromotionType: 91aba696-8b4b-4297-a4cc-63d8cb37c658
+M_Salesman: 484632ee-5f0f-49f9-a3db-2f385a630b67
+M_WorkflowStatus: f4dbf8a5-2233-44e0-aeec-12e2085b8eef
+Promotion Activities Charge to CBU: b5f28887-6136-4968-a1af-c96a29b969f6
+Promotion Activities Expenses: 37775ba2-635d-49e7-ae84-fc3cc7d2a1ac
+Promotion Activities Detail: ef32f6d0-991c-4be5-9d03-83c2948d029b

@@ -1,0 +1,13 @@
+// Styles for the AllPA search screen. Replaces the inline style attributes that the old
+// single-file AllPA used (CLAUDE.md §3 — zero inline CSS).
+
+// Small "Clear" button shown inline next to the Channel label.
+.clearChannelButton {
+  width: 50px;
+  font-size: 10px;
+}
+
+// Fixed width for the footer action buttons (Search / Refresh / Clear).
+.actionButton {
+  width: 100px;
+}

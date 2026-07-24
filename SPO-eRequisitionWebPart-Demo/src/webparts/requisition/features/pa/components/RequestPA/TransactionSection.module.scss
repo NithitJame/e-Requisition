@@ -1,0 +1,10 @@
+// Layout widths for the per-transaction "Total spending" summary table.
+// Replaces the former inline style={{ width: ... }} attributes.
+
+.totalsLabelCell {
+  width: 40%;
+}
+
+.totalsTypeCell {
+  width: 20%;
+}

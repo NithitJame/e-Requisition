@@ -1,0 +1,526 @@
+{
+    "Channel": [
+        {
+            "value": "7-ELEVEN",
+            "label": "7-ELEVEN"
+        },
+        {
+            "value": "ALL D",
+            "label": "ALL D"
+        },
+        {
+            "value": "BIG C",
+            "label": "BIG C"
+        },
+        {
+            "value": "BKK COOP",
+            "label": "BKK COOP"
+        },
+        {
+            "value": "BOOTS",
+            "label": "BOOTS"
+        },
+        {
+            "value": "CFW",
+            "label": "CFW"
+        },
+        {
+            "value": "CJ",
+            "label": "CJ"
+        },
+        {
+            "value": "CPF",
+            "label": "CPF"
+        },
+        {
+            "value": "CV BLITZ",
+            "label": "CV BLITZ"
+        },
+        {
+            "value": "DA",
+            "label": "DA"
+        },
+        {
+            "value": "DIST_NOE2",
+            "label": "DIST_NOE2"
+        },
+        {
+            "value": "DIST_NOR1",
+            "label": "DIST_NOR1"
+        },
+        {
+            "value": "DIST_NOR3",
+            "label": "DIST_NOR3"
+        },
+        {
+            "value": "E-COMMERCE",
+            "label": "E-COMMERCE"
+        },
+        {
+            "value": "FOODLAND",
+            "label": "FOODLAND"
+        },
+        {
+            "value": "FS",
+            "label": "FS"
+        },
+        {
+            "value": "ISETAN",
+            "label": "ISETAN"
+        },
+        {
+            "value": "JIFFY",
+            "label": "JIFFY"
+        },
+        {
+            "value": "JUSCO",
+            "label": "JUSCO"
+        },
+        {
+            "value": "MAKRO",
+            "label": "MAKRO"
+        },
+        {
+            "value": "MEGA MARKET",
+            "label": "MEGA MARKET"
+        },
+        {
+            "value": "OTHER CVS",
+            "label": "OTHER CVS"
+        },
+        {
+            "value": "OTHER HYPER",
+            "label": "OTHER HYPER"
+        },
+        {
+            "value": "SFM",
+            "label": "SFM"
+        },
+        {
+            "value": "SUPERSAVE",
+            "label": "SUPERSAVE"
+        },
+        {
+            "value": "SUWANNACHARD",
+            "label": "SUWANNACHARD"
+        },
+        {
+            "value": "TANGHUASENG",
+            "label": "TANGHUASENG"
+        },
+        {
+            "value": "TESCO",
+            "label": "TESCO"
+        },
+        {
+            "value": "THEMALL",
+            "label": "THEMALL"
+        },
+        {
+            "value": "TOKYO",
+            "label": "TOKYO"
+        },
+        {
+            "value": "TOOK DEE",
+            "label": "TOOK DEE"
+        },
+        {
+            "value": "TOPS",
+            "label": "TOPS"
+        },
+        {
+            "value": "UFM FUJI",
+            "label": "UFM FUJI"
+        },
+        {
+            "value": "VILLA",
+            "label": "VILLA"
+        },
+        {
+            "value": "WATSON",
+            "label": "WATSON"
+        }
+    ],
+    "Category": [
+        {
+            "value": "POWDER",
+            "label": "POWDER"
+        },
+        {
+            "value": "RTD",
+            "label": "RTD"
+        },
+        {
+            "value": "CONFECTIONERY",
+            "label": "CONFECTIONERY"
+        }
+    ],
+    "Month": [
+        {
+            "value": "January",
+            "label": "January"
+        },
+        {
+            "value": "February",
+            "label": "February"
+        },
+        {
+            "value": "March",
+            "label": "March"
+        },
+        {
+            "value": "April",
+            "label": "April"
+        },
+        {
+            "value": "May",
+            "label": "May"
+        },
+        {
+            "value": "June",
+            "label": "June"
+        },
+        {
+            "value": "July",
+            "label": "July"
+        },
+        {
+            "value": "August",
+            "label": "August"
+        },
+        {
+            "value": "September",
+            "label": "September"
+        },
+        {
+            "value": "October",
+            "label": "October"
+        },
+        {
+            "value": "November",
+            "label": "November"
+        },
+        {
+            "value": "December",
+            "label": "December"
+        }
+    ],
+    "Year": [
+        {
+            "value": "1819",
+            "label": "1819"
+        },
+        {
+            "value": "1920",
+            "label": "1920"
+        },
+        {
+            "value": "2021",
+            "label": "2021"
+        },
+        {
+            "value": "2122",
+            "label": "2122"
+        },
+        {
+            "value": "2223",
+            "label": "2223"
+        },
+        {
+            "value": "2324",
+            "label": "2324"
+        },
+        {
+            "value": "2425",
+            "label": "2425"
+        },
+        {
+            "value": "2526",
+            "label": "2526"
+        },
+        {
+            "value": "2627",
+            "label": "2627"
+        }
+    ],
+    "WorkFlowStatus": [
+        {
+            "value": "Open",
+            "label": "Open"
+        },
+        {
+            "value": "Waiting by Kam/AM",
+            "label": "Waiting by Kam/AM"
+        },
+        {
+            "value": "Waiting by SM",
+            "label": "Waiting by SM"
+        },
+        {
+            "value": "Waiting by CM",
+            "label": "Waiting by CM"
+        },
+        {
+            "value": "Approved",
+            "label": "Approved"
+        },
+        {
+            "value": "Payment",
+            "label": "Payment"
+        },
+        {
+            "value": "Closed",
+            "label": "Closed"
+        },
+        {
+            "value": "Waiting by HCD",
+            "label": "Waiting by HCD"
+        },
+        {
+            "value": "Rejected",
+            "label": "Rejected"
+        },
+        {
+            "value": "Waiting by HBPA",
+            "label": "Waiting by HBPA"
+        },
+        {
+            "value": "Waiting by S&T D.",
+            "label": "Waiting by S&T D."
+        },
+        {
+            "value": "12",
+            "label": "Waiting by CLM"
+        }
+    ],
+    "eRequisitionNo": [
+        {
+            "value": "7EPA1819-01",
+            "label": "7EPA1819-01"
+        },
+        {
+            "value": "7EPA1819-02",
+            "label": "7EPA1819-02"
+        },
+        {
+            "value": "7EPA1819-03",
+            "label": "7EPA1819-03"
+        },
+        {
+            "value": "7EPA1819-04",
+            "label": "7EPA1819-04"
+        },
+        {
+            "value": "7EPA1819-05",
+            "label": "7EPA1819-05"
+        },
+        {
+            "value": "7EPA1819-06",
+            "label": "7EPA1819-06"
+        },
+        {
+            "value": "7EPA1819-07",
+            "label": "7EPA1819-07"
+        },
+        {
+            "value": "7EPA1819-08",
+            "label": "7EPA1819-08"
+        },
+        {
+            "value": "7EPA1819-09",
+            "label": "7EPA1819-09"
+        },
+        {
+            "value": "7EPA1819-10",
+            "label": "7EPA1819-10"
+        },
+        {
+            "value": "7EPA1819-11",
+            "label": "7EPA1819-11"
+        },
+        {
+            "value": "7EPA1819-12",
+            "label": "7EPA1819-12"
+        },
+        {
+            "value": "7EPA1819-13",
+            "label": "7EPA1819-13"
+        },
+        {
+            "value": "7EPA1819-14",
+            "label": "7EPA1819-14"
+        },
+        {
+            "value": "7EPA1819-15",
+            "label": "7EPA1819-15"
+        },
+        {
+            "value": "7EPA1819-16",
+            "label": "7EPA1819-16"
+        },
+        {
+            "value": "7EPA1819-17",
+            "label": "7EPA1819-17"
+        },
+        {
+            "value": "7EPA1819-18",
+            "label": "7EPA1819-18"
+        },
+        {
+            "value": "7EPA1819-19",
+            "label": "7EPA1819-19"
+        },
+        {
+            "value": "7EPA1819-20",
+            "label": "7EPA1819-20"
+        },
+        {
+            "value": "7EPA1819-21",
+            "label": "7EPA1819-21"
+        },
+        {
+            "value": "7EPA1819-22",
+            "label": "7EPA1819-22"
+        },
+        {
+            "value": "7EPA1819-23",
+            "label": "7EPA1819-23"
+        },
+        {
+            "value": "7EPA1819-24",
+            "label": "7EPA1819-24"
+        },
+        {
+            "value": "7EPA1819-25",
+            "label": "7EPA1819-25"
+        },
+        {
+            "value": "7EPA1819-26",
+            "label": "7EPA1819-26"
+        },
+        {
+            "value": "7EPA1819-27",
+            "label": "7EPA1819-27"
+        },
+        {
+            "value": "7EPA1819-28",
+            "label": "7EPA1819-28"
+        },
+        {
+            "value": "7EPA1819-29",
+            "label": "7EPA1819-29"
+        },
+        {
+            "value": "7EPA1819-30",
+            "label": "7EPA1819-30"
+        }
+    ],
+    "promotionOptions": [
+        {
+            "value": "GS Premium",
+            "label": "GS Premium"
+        },
+        {
+            "value": "Buy More",
+            "label": "Buy More"
+        },
+        {
+            "value": "Price off",
+            "label": "Price off"
+        },
+        {
+            "value": "Display Fee",
+            "label": "Display Fee"
+        },
+        {
+            "value": "Trade Agreement",
+            "label": "Trade Agreement"
+        },
+        {
+            "value": "Other",
+            "label": "Other"
+        }
+    ],
+    "ExpenseType": [
+        {
+            "value": "Rebates",
+            "label": "Rebates",
+            "group": "TD"
+        },
+        {
+            "value": "Condition Rebate -TH",
+            "label": "Condition Rebate -TH",
+            "group": "TD"
+        },
+        {
+            "value": "Consumer Discounts",
+            "label": "Consumer Discounts",
+            "group": "TD"
+        },
+        {
+            "value": "Other Discount - TH",
+            "label": "Other Discount - TH",
+            "group": "TD"
+        },
+        {
+            "value": "Mail Fee - TH",
+            "label": "Mail Fee - TH",
+            "group": "TD"
+        },
+        {
+            "value": "Listing Fees",
+            "label": "Listing Fees",
+            "group": "TD"
+        },
+        {
+            "value": "Promotional Fees",
+            "label": "Promotional Fees",
+            "group": "TD"
+        },
+        {
+            "value": "Free Trade Samples",
+            "label": "Free Trade Samples",
+            "group": "TD"
+        },
+        {
+            "value": "Gondola - TH",
+            "label": "Gondola - TH",
+            "group": "TI"
+        },
+        {
+            "value": "Floor Display - TH",
+            "label": "Floor Display - TH",
+            "group": "TI"
+        },
+        {
+            "value": "Printing Material",
+            "label": "Printing Material",
+            "group": "TI"
+        },
+        {
+            "value": "Normal Shelf - TH",
+            "label": "Normal Shelf - TH",
+            "group": "TI"
+        },
+        {
+            "value": "Premium Shelf - TH",
+            "label": "Premium Shelf - TH",
+            "group": "TI"
+        },
+        {
+            "value": "Stand Display - TH",
+            "label": "Stand Display - TH",
+            "group": "TI"
+        },
+        {
+            "value": "B2B/Data sharing - TH",
+            "label": "B2B/Data sharing - TH",
+            "group": "TI"
+        },
+        {
+            "value": "Store Open/Anniv - TH",
+            "label": "Store Open/Anniv - TH",
+            "group": "TI"
+        }
+    ]
+}

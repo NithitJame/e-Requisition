@@ -1,0 +1,444 @@
+{
+  "M_PromotionType": [
+    {
+      "id": "1",
+      "Title": "PT0001",
+      "Description": "GS Premium"
+    },
+    {
+      "id": "2",
+      "Title": "PT0002",
+      "Description": "Buy More"
+    },
+    {
+      "id": "3",
+      "Title": "PT0003",
+      "Description": "Price off"
+    },
+    {
+      "id": "4",
+      "Title": "PT0004",
+      "Description": "Display Fee"
+    },
+    {
+      "id": "5",
+      "Title": "PT0005",
+      "Description": "Gondola"
+    },
+    {
+      "id": "6",
+      "Title": "PT0006",
+      "Description": null
+    },
+    {
+      "id": "7",
+      "Title": "PT0007",
+      "Description": null
+    },
+    {
+      "id": "8",
+      "Title": "PT0008",
+      "Description": null
+    },
+    {
+      "id": "9",
+      "Title": "PT0009",
+      "Description": null
+    },
+    {
+      "id": "10",
+      "Title": "PT9998",
+      "Description": "Trade Agreement"
+    },
+    {
+      "id": "11",
+      "Title": "PT9999",
+      "Description": "Other"
+    }
+  ],
+  "M_AccountName": [
+    {
+      "id": "1",
+      "Title": "2030390",
+      "Description": "Normal Discount - TH"
+    },
+    {
+      "id": "2",
+      "Title": "2030140",
+      "Description": "Permanent Promotion Discounts"
+    },
+    {
+      "id": "3",
+      "Title": "2030410",
+      "Description": "Floor Discount - TH"
+    },
+    {
+      "id": "4",
+      "Title": "2030420",
+      "Description": "Special Discount -TH"
+    },
+    {
+      "id": "5",
+      "Title": "2030160",
+      "Description": "Rebates"
+    },
+    {
+      "id": "6",
+      "Title": "2030430",
+      "Description": "Condition Rebate -TH"
+    },
+    {
+      "id": "7",
+      "Title": "2030130",
+      "Description": "Terms Discounts"
+    },
+    {
+      "id": "8",
+      "Title": "634131",
+      "Description": "FOC REBATE"
+    },
+    {
+      "id": "9",
+      "Title": "634132",
+      "Description": "FOC PR"
+    },
+    {
+      "id": "10",
+      "Title": "634150",
+      "Description": "VOLUME DISCOUNT"
+    },
+    {
+      "id": "11",
+      "Title": "2030100",
+      "Description": "Consumer Discounts"
+    },
+    {
+      "id": "12",
+      "Title": "2030440",
+      "Description": "Other Discount - TH"
+    },
+    {
+      "id": "13",
+      "Title": "2030450",
+      "Description": "Trade Disc Prov - TH"
+    },
+    {
+      "id": "14",
+      "Title": "4420140",
+      "Description": "Agency Fees - Trade"
+    },
+    {
+      "id": "15",
+      "Title": "2030580",
+      "Description": "Mail Fee - TH"
+    },
+    {
+      "id": "16",
+      "Title": "2030190",
+      "Description": "Listing Fees"
+    },
+    {
+      "id": "17",
+      "Title": "2030180",
+      "Description": "Promotional Fees"
+    },
+    {
+      "id": "18",
+      "Title": "4440110",
+      "Description": "Free Trade Samples"
+    },
+    {
+      "id": "19",
+      "Title": "2030530",
+      "Description": "Gondola - TH"
+    },
+    {
+      "id": "20",
+      "Title": "633131",
+      "Description": "CHECK OUT POINT"
+    },
+    {
+      "id": "21",
+      "Title": "2030540",
+      "Description": "Floor Display - TH"
+    },
+    {
+      "id": "22",
+      "Title": "4420120",
+      "Description": "Printing Material"
+    },
+    {
+      "id": "23",
+      "Title": "2030550",
+      "Description": "Normal Shelf - TH"
+    },
+    {
+      "id": "24",
+      "Title": "633135",
+      "Description": "OTHER TRADE"
+    },
+    {
+      "id": "25",
+      "Title": "2030560",
+      "Description": "Stand Display - TH"
+    },
+    {
+      "id": "26",
+      "Title": "2030590",
+      "Description": "B2B/Data Sharing-TH"
+    },
+    {
+      "id": "27",
+      "Title": "2030570",
+      "Description": "Store Open/Anniv -TH"
+    },
+    {
+      "id": "28",
+      "Title": "633199",
+      "Description": "PROMOTION TO TRADE PROV."
+    },
+    {
+      "id": "29",
+      "Title": "4013220",
+      "Description": "Rounding Differences Surcharges"
+    },
+    {
+      "id": "30",
+      "Title": "649001",
+      "Description": "OTHERS SELLING EXPENSE"
+    },
+    {
+      "id": "31",
+      "Title": "1240110",
+      "Description": "T/Debt-Suspense Acc"
+    }
+  ],
+  "M_MajorGroupName": [
+    {
+      "id": "1",
+      "Title": "GMJ100",
+      "Description": "Base 3in1"
+    },
+    {
+      "id": "2",
+      "Title": "GMJ110",
+      "Description": "LS 3in1"
+    },
+    {
+      "id": "3",
+      "Title": "GMJ120",
+      "Description": "SM 3in1"
+    },
+    {
+      "id": "4",
+      "Title": "GMJ200",
+      "Description": "CL"
+    },
+    {
+      "id": "5",
+      "Title": "GMJ220",
+      "Description": "CL FS"
+    },
+    {
+      "id": "6",
+      "Title": "GMJ250",
+      "Description": "F3"
+    },
+    {
+      "id": "7",
+      "Title": "GMJ300",
+      "Description": "O.Cool"
+    },
+    {
+      "id": "8",
+      "Title": "GMJ350",
+      "Description": "Soy Local"
+    },
+    {
+      "id": "9",
+      "Title": "GMJ355",
+      "Description": "Export"
+    },
+    {
+      "id": "10",
+      "Title": "GMJ360",
+      "Description": "WM Collagen"
+    },
+    {
+      "id": "11",
+      "Title": "GMJ370",
+      "Description": "5G"
+    },
+    {
+      "id": "12",
+      "Title": "GMJ400",
+      "Description": "SW"
+    },
+    {
+      "id": "13",
+      "Title": "GMJ450",
+      "Description": "Yen CC"
+    },
+    {
+      "id": "14",
+      "Title": "GMJ460",
+      "Description": "MILK TEA FS"
+    },
+    {
+      "id": "15",
+      "Title": "GMJ470",
+      "Description": "Powder other"
+    },
+    {
+      "id": "16",
+      "Title": "GMJ500",
+      "Description": "CK"
+    },
+    {
+      "id": "17",
+      "Title": "GMJ510",
+      "Description": "Onies"
+    },
+    {
+      "id": "18",
+      "Title": "GMJ600",
+      "Description": "Base UHT"
+    },
+    {
+      "id": "19",
+      "Title": "GMJ610",
+      "Description": "LS UHT"
+    },
+    {
+      "id": "20",
+      "Title": "GMJ620",
+      "Description": "SM CHOC UHT"
+    },
+    {
+      "id": "21",
+      "Title": "GMJ630",
+      "Description": "Other UHT"
+    },
+    {
+      "id": "22",
+      "Title": "GMJ130",
+      "Description": "GOLD 3in1"
+    },
+    {
+      "id": "23",
+      "Title": "GMJ365",
+      "Description": "WM"
+    },
+    {
+      "id": "24",
+      "Title": "GMJ480",
+      "Description": "FS Other Powder"
+    },
+    {
+      "id": "25",
+      "Title": "GMJ622",
+      "Description": "GOLD UHT"
+    },
+    {
+      "id": "26",
+      "Title": "GMJ485",
+      "Description": "Flake"
+    },
+    {
+      "id": "27",
+      "Title": "GMJ131",
+      "Description": "NO SUCROSE 3in1"
+    },
+    {
+      "id": "28",
+      "Title": "GMJ135",
+      "Description": "PREMIUM COCOA 3in1"
+    },
+    {
+      "id": "29",
+      "Title": "GMJ511",
+      "Description": "Crunchy pop"
+    },
+    {
+      "id": "30",
+      "Title": "GMJ132",
+      "Description": "NO SUCROSE FS"
+    },
+    {
+      "id": "31",
+      "Title": "GMJ461",
+      "Description": "SW FS"
+    },
+    {
+      "id": "32",
+      "Title": "GMJ486",
+      "Description": "Flake FS"
+    },
+    {
+      "id": "33",
+      "Title": "GMJ366",
+      "Description": "WM FS"
+    },
+    {
+      "id": "34",
+      "Title": "GMJ260",
+      "Description": "F3 FS"
+    },
+    {
+      "id": "35",
+      "Title": "GMJ625",
+      "Description": "PASTEURIZE BASE"
+    },
+    {
+      "id": "36",
+      "Title": "GMJ487",
+      "Description": "Crunchy Syrup"
+    },
+    {
+      "id": "37",
+      "Title": "GMJ351",
+      "Description": "Soy FS"
+    },
+    {
+      "id": "38",
+      "Title": "GMJ626",
+      "Description": "PASTEURIZE DARK COCOA"
+    },
+    {
+      "id": "39",
+      "Title": "GMJ621",
+      "Description": "SM MILK UHT"
+    },
+    {
+      "id": "40",
+      "Title": "GMJ512",
+      "Description": "Rocks"
+    },
+    {
+      "id": "41",
+      "Title": "GMJ521",
+      "Description": "Malt Dipping"
+    },
+    {
+      "id": "42",
+      "Title": "GMJ137",
+      "Description": "Ready mix 3in1"
+    },
+    {
+      "id": "43",
+      "Title": "GMJ138",
+      "Description": "Zero sugar 3in1"
+    },
+    {
+      "id": "44",
+      "Title": "GMJ367",
+      "Description": "COCOA MALT"
+    },
+    {
+      "id": "45",
+      "Title": "GMJ998",
+      "Description": "Premium Group"
+    }
+  ],
+  "M_MajorName": []
+}

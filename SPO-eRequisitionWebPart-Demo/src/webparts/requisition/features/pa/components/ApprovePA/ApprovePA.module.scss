@@ -1,0 +1,14 @@
+// Approve page styles. Layout only — colours come from Bootstrap utility classes
+// (is-invalid / text-danger) so the theme stays consistent (CLAUDE.md styling rules).
+
+.commentCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.submitBar {
+  display: flex;
+  justify-content: flex-end;
+}
