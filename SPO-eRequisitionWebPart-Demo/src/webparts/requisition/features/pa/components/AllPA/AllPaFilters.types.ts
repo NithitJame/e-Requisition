@@ -21,4 +21,6 @@ export interface IAllPaFiltersProps {
   onClear: () => void;
   /** Optional "Export To Excel" handler. When omitted the button stays inert (AllPA today). */
   onExport?: () => void;
+  /** Shows the small inline "Clear" button next to the Channel label. Defaults to true. */
+  showChannelClear?: boolean;
 }

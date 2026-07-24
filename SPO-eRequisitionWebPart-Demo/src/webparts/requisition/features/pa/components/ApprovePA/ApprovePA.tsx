@@ -56,6 +56,7 @@ const ApprovePA: React.FC = () => {
         onRefresh={inbox.refresh}
         onClear={inbox.clear}
         onExport={inbox.exportExcel}
+        showChannelClear={false}
       />
 
       <div className="row mt-3">

@@ -18,18 +18,21 @@ const AllPaFilters: React.FC<IAllPaFiltersProps> = ({
   onRefresh,
   onClear,
   onExport,
+  showChannelClear = true,
 }) => (
   <>
     <div className="row">
       <div className="col-12 col-xl-3 col-lg-4 col-md-6">
         <label className="fw-bold mb-1">
           Channel
-          <button
-            className={`btn btn-sm btn-secondary btn-custom-1 rounded-xl me-2 ${styles.clearChannelButton}`}
-            onClick={() => onChange('channel', null)}
-          >
-            Clear
-          </button>
+          {showChannelClear ? (
+            <button
+              className={`btn btn-sm btn-secondary btn-custom-1 rounded-xl me-2 ${styles.clearChannelButton}`}
+              onClick={() => onChange('channel', null)}
+            >
+              Clear
+            </button>
+          ) : null}
         </label>
         <SearchableSelect
           isMulti
