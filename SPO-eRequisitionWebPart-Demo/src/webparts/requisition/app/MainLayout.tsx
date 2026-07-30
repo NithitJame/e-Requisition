@@ -11,6 +11,7 @@ import AllPA from '@/features/pa/components/AllPA';
 import RequestPA from '@/features/pa/components/RequestPA';
 import ApprovePA from '@/features/pa/components/ApprovePA';
 import AllTA from '@/features/ta/components/AllTA';
+import TradeAgreementView from '@/features/ta/components/TradeAgreementView';
 
 // ─── 1. โครงสร้างข้อมูลเมนูและเส้นทาง (เหมือนเดิม) ───
 interface ISubMenu {
@@ -65,7 +66,8 @@ const MainLayout: React.FC = () => {
 
     const toggleSubMenu = (menuId: string): void => {
         setOpenSubMenus(prev => ({
-            // ลบ ...prev ของเก่าออก เพื่อให้เคลียร์เมนูหลักอันอื่นทิ้งทั้งหมด
+            // Preserve every other parent menu's current expanded/collapsed state.
+            ...prev,
             [menuId]: !prev[menuId]
         }));
     };
@@ -84,8 +86,11 @@ const MainLayout: React.FC = () => {
             }
         });
 
-        // แทนที่สถานะเดิมทั้งหมด (เมนูย่อยไหนที่ไม่ตรงกับ URL ปัจจุบันจะถูกปิดลงทันที)
-        setOpenSubMenus(updatedOpenMenus);
+        // Auto-expand the active parent without changing any other parent's state.
+        setOpenSubMenus(prev => ({
+            ...prev,
+            ...updatedOpenMenus,
+        }));
     }, [location.pathname]);
 
     return (
@@ -200,7 +205,8 @@ const MainLayout: React.FC = () => {
                                     <Route path="/pa/request" component={RequestPA} />
                                     <Route path="/pa/approve" component={ApprovePA} />
 
-                                    <Route path="/ta" component={AllTA} />
+                                    <Route path="/ta/request" component={TradeAgreementView} />
+                                    <Route exact path="/ta" component={AllTA} />
 
                                     <Route path="/">
                                         <Redirect to="/pa" />

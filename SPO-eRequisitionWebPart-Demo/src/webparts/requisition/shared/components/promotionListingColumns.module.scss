@@ -1,0 +1,9 @@
+// Truncation for long Mechanics Details text so it never breaks the table layout.
+// Paired with a `title` attribute for the full-text tooltip.
+.mechanicsTruncate {
+  display: block;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

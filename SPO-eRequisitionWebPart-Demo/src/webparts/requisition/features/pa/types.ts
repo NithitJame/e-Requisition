@@ -2,9 +2,12 @@
 // See docs/REQUIREMENTS.md for the business meaning of each concept.
 // Generic primitives (IOption, ISharePointItem, ILookupValue) live in shared/types.
 
-import { IOption, ISharePointItem, ILookupValue } from '@/shared/types';
+import { IOption, ISharePointItem, IPromotionActivityRow } from '@/shared/types';
 
-export type { IOption, ISharePointItem, ILookupValue };
+// Re-export the shared primitives + listing types so existing `@/features/pa/types` imports
+// keep working now that the promotion-listing row/filter types live in shared/types.
+// (IPromotionActivityRow is also imported above because IApprovalInboxRow extends it.)
+export type { IOption, ISharePointItem, ILookupValue, IPromotionActivityRow, IAllPaFilterState } from '@/shared/types';
 
 /**
  * An expense-type option. `group` carries the TI/TD classification used to
@@ -110,47 +113,21 @@ export interface IMockDataSeederFormValues {
   fiscalMonth: string; // zero-padded 2-digit string e.g. "03"
 }
 
-/**
- * One normalised "Promotion Activities Detail" row for the AllPA listing table.
- * Lookups are flattened to `ILookupValue`; the `_x0020_`-encoded utilized totals are
- * surfaced under friendly names (`TotalSpendingTI` / `TotalSpendingTD`).
- */
-export interface IPromotionActivityRow {
-  Id: number;
-  TPMNo: string;
-  Transaction: number | string;
-  Fiscal: string;
-  MechanicsDetails: string;
-  ExpectedToClose: string;
-  Delay: string;
-  PromotionWeek?: string;
-  TotalSpendingTICommitted?: number;
-  TotalSpendingTDCommitted?: number;
-  TotalSpendingTIAdjust?: number;
-  TotalSpendingTDAdjust?: number;
-  TotalSpendingTI?: number;
-  TotalSpendingTD?: number;
-  /** W1-2 / W3-4 promotion-week flags (the `W1_x002d_2` / `W3_x002d_4` booleans). */
-  W12: boolean;
-  W34: boolean;
-  CustomerSubGroup: ILookupValue | null;
-  PromotionType: ILookupValue | null;
-  PromotionMonth: ILookupValue | null;
-  WorkflowStatus: ILookupValue | null;
-  Category: ILookupValue[];
+// IPromotionActivityRow and IAllPaFilterState now live in shared/types (re-exported above),
+// since AllPA, AllTA, and Approve all depend on them.
+
+/** One row of a transaction's workflow history (PA Workflow History audit trail). */
+export interface IWorkflowHistoryEntry {
+  user: string;
+  action: string;
+  comment: string;
+  date: string;
 }
 
-/** All filter selections held by the AllPA search screen. */
-export interface IAllPaFilterState {
-  channel: IOption[] | null;
-  category: IOption[] | null;
-  monthFrom: IOption | null;
-  monthTo: IOption | null;
-  fiscalYear: IOption | null;
-  workflowStatus: IOption | null;
-  eRequisitionNo: IOption | null;
-  expectedToClose: IOption | null;
-  promotionWeek: string | null;
+/** One attachment/document belonging to a transaction (name + download URL). */
+export interface IAttachmentFile {
+  name: string;
+  url: string;
 }
 
 /** An approval decision for a single transaction on the Approve page. */

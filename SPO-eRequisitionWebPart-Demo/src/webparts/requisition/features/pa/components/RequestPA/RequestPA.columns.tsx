@@ -16,9 +16,17 @@ import {
 
 const RequiredMark = (): React.ReactElement => <span className="text-danger">*</span>;
 
-/** Columns for the per-transaction summary table. */
+/**
+ * Columns for the per-transaction summary table.
+ * @param disabled read-only (view) mode — disables Promotion Type / Category / week checkboxes.
+ * @param onOpenAttachment opens the attachments viewer for a transaction's Ref No.
+ * @param tpmNo the e-Requisition prefix, used to build each row's Ref No ("TPMNo-Transaction").
+ */
 export function getTransactionColumns(
+  disabled: boolean,
   handlers: IRequisitionFormHandlers,
+  onOpenAttachment: (refNo: string) => void,
+  tpmNo: string,
 ): TableColumn<ITransactionRow>[] {
   return [
     {
@@ -37,6 +45,7 @@ export function getTransactionColumns(
             value={row.PromotionType}
             onChange={(option) => handlers.updateTransactionRow(row, 'PromotionType', option)}
             placeholder="Please select"
+            disabled={disabled}
           />
         </div>
       ),
@@ -54,6 +63,7 @@ export function getTransactionColumns(
             value={row.Category}
             onChange={(option) => handlers.updateTransactionRow(row, 'Category', option)}
             placeholder="Please select"
+            disabled={disabled}
           />
         </div>
       ),
@@ -70,6 +80,7 @@ export function getTransactionColumns(
             className="form-check-input"
             checked={row.W12}
             onChange={() => handlers.updateTransactionRow(row, 'W12', !row.W12)}
+            disabled={disabled}
           />
         </div>
       ),
@@ -86,6 +97,7 @@ export function getTransactionColumns(
             className="form-check-input"
             checked={row.W34}
             onChange={() => handlers.updateTransactionRow(row, 'W34', !row.W34)}
+            disabled={disabled}
           />
         </div>
       ),
@@ -95,9 +107,12 @@ export function getTransactionColumns(
     },
     {
       name: 'Attachment',
-      cell: () => (
+      cell: (row) => (
         <div className="d-flex gap-2">
-          <button className="btn btn-sm btn-outline-secondary rounded-xl">
+          <button
+            className="btn btn-sm btn-outline-secondary rounded-xl"
+            onClick={() => onOpenAttachment(`${tpmNo}-${row.Transaction}`)}
+          >
             <i className="fa fa-paperclip me-1" /> Attachment
           </button>
         </div>

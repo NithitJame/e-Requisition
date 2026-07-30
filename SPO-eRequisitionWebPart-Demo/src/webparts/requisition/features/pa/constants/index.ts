@@ -6,6 +6,9 @@ import { IChannelShortOption, IOption } from '@/features/pa/types';
 // Mock Data Seeder constants (dev-only feature).
 export * from './mockData';
 
+// Shared listing constants (moved to shared/; re-exported so existing pa imports keep working).
+export { LIST_PAGE_SIZE, FISCAL_MONTH_OPTIONS } from '@/shared/constants/promotionListing';
+
 /** SharePoint list display names queried by RequisitionService. */
 export const LIST_NAMES = {
   PROMOTION_ACTIVITIES_DETAIL: 'Promotion Activities Detail',
@@ -20,6 +23,8 @@ export const LIST_NAMES = {
   ACCOUNT_NAME: 'M_AccountName',
   // Approval workflow.
   PA_WORKFLOW_HISTORY: 'PA Workflow History',
+  // Attachments for a transaction (files keyed by Ref No / TPMNo).
+  PA_DOCUMENTS: 'PA Documents',
 } as const;
 
 /**
@@ -58,9 +63,6 @@ export const PA_PENDING_STATUSES: string[] = ['Waiting by Kam/AM', 'Waiting by S
 
 /** Text written to Promotion Activities Detail `Status` when saving as a draft. */
 export const DRAFT_STATUS = 'Draft';
-
-/** SharePoint list view threshold; pages are pulled in chunks of this size. */
-export const LIST_PAGE_SIZE = 5000;
 
 /** Request-type code embedded in the e-Requisition number (Promotion Activity). */
 export const PA_TYPE_CODE = 'PA';
@@ -120,21 +122,3 @@ export const CHANNEL_SHORT_OPTIONS: IChannelShortOption[] = [
   { value: 'WAT', label: 'WAT', code: 'WATSON' },
 ];
 
-/**
- * Fiscal-month code -> calendar month label.
- * The fiscal year starts in September, so September = "01" (see docs/REQUIREMENTS.md §3).
- */
-export const FISCAL_MONTH_OPTIONS: IOption[] = [
-  { value: '05', label: 'January' },
-  { value: '06', label: 'February' },
-  { value: '07', label: 'March' },
-  { value: '08', label: 'April' },
-  { value: '09', label: 'May' },
-  { value: '10', label: 'June' },
-  { value: '11', label: 'July' },
-  { value: '12', label: 'August' },
-  { value: '01', label: 'September' },
-  { value: '02', label: 'October' },
-  { value: '03', label: 'November' },
-  { value: '04', label: 'December' },
-];

@@ -10,3 +10,10 @@
   justify-content: flex-end;
   margin-bottom: 8px;
 }
+
+// Content container for the Workflow History / Attachments viewer modals.
+.viewerModal {
+  padding: 20px;
+  min-width: 480px;
+  max-width: 720px;
+}

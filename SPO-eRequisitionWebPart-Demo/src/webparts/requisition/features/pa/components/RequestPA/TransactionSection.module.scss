@@ -8,3 +8,11 @@
 .totalsTypeCell {
   width: 20%;
 }
+
+// Highlight for the transaction selected from the All Promotion Activities table.
+.highlighted {
+  border-left: 4px solid #0078d4;
+  background-color: rgba(0, 120, 212, 0.06);
+  border-radius: 4px;
+  padding-left: 12px;
+}

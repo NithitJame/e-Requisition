@@ -49,6 +49,12 @@ interface ISpfxWindow {
 export interface IUseRequisitionForm {
   isLoading: boolean;
   disabledAction: boolean;
+  /** Transaction number selected from the list (view mode) to highlight, or null. */
+  selectedTransaction: number | null;
+  /** Set when loading an existing e-Requisition failed. */
+  loadError: string | null;
+  /** True in view mode when no matching e-Requisition was found / not accessible. */
+  notFound: boolean;
   transactions: IRequisitionTransaction[];
   channel: IOption | null;
   fiscalYear: IOption | null;
@@ -62,6 +68,8 @@ export interface IUseRequisitionForm {
   handlers: IRequisitionFormHandlers;
   save: (action: TFormAction) => Promise<void>;
   loadMockData: (fiscalYear: string, fiscalMonth: string) => void;
+  /** Returns to the All Promotion Activities list (closes the view tab when opened as one). */
+  goBack: () => void;
 }
 
 const OPTION_SET: IRequisitionOptionSet = {
@@ -83,15 +91,15 @@ function getService(): RequisitionService {
   return new RequisitionService(spHttpClient, siteUrl);
 }
 
-/** Reads the `_id` query param from the HashRouter URL (search first, then raw hash). */
-function readRequisitionId(search: string): string | null {
-  const fromSearch = new URLSearchParams(search).get('_id');
+/** Reads a query param from the HashRouter URL (search first, then raw hash). */
+function readQueryParam(search: string, key: string): string | null {
+  const fromSearch = new URLSearchParams(search).get(key);
   if (fromSearch) return fromSearch;
 
   const rawHash = window.location.hash || '';
   const queryIndex = rawHash.indexOf('?');
   if (queryIndex === -1) return null;
-  return new URLSearchParams(rawHash.substring(queryIndex)).get('_id');
+  return new URLSearchParams(rawHash.substring(queryIndex)).get(key);
 }
 
 export function useRequisitionForm(): IUseRequisitionForm {
@@ -107,6 +115,9 @@ export function useRequisitionForm(): IUseRequisitionForm {
   const [totalSpendingTD, setTotalSpendingTD] = React.useState<number>(0);
   const [disabledAction, setDisabledAction] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [selectedTransaction, setSelectedTransaction] = React.useState<number | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [notFound, setNotFound] = React.useState<boolean>(false);
   const lookupMapsRef = React.useRef<ILookupIdMaps | null>(null);
   // TPMNo of an existing promotion currently loaded for edit (drives replace-on-save).
   const editingTpmNoRef = React.useRef<string | null>(null);
@@ -115,9 +126,17 @@ export function useRequisitionForm(): IUseRequisitionForm {
 
   const loadRequisition = async (id: string): Promise<void> => {
     setIsLoading(true);
+    setLoadError(null);
+    setNotFound(false);
     try {
       const raw = await getService().getRequisitionRawData(id);
       const mapped = mapRawDataToForm(id, raw, OPTION_SET);
+      // Empty result = the id does not exist or the user cannot access it (item-level
+      // permissions). Surface a clear "not found" rather than a blank form.
+      if (mapped.transactions.length === 0) {
+        setNotFound(true);
+        return;
+      }
       setChannel(mapped.channel);
       setFiscalYear(mapped.fiscalYear);
       setPromotionMonth(mapped.promotionMonth);
@@ -127,7 +146,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
       setTransactions(mapped.transactions);
     } catch (error) {
       console.error('Error loading requisition data:', error);
-      showErrorAlert('ไม่สามารถโหลดข้อมูล e-Requisition ได้');
+      setLoadError('ไม่สามารถโหลดข้อมูล e-Requisition ได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsLoading(false);
     }
@@ -197,8 +216,10 @@ export function useRequisitionForm(): IUseRequisitionForm {
 
   // On mount: view an existing e-Requisition (read-only) or start a blank one.
   React.useEffect(() => {
-    const id = readRequisitionId(location.search);
+    const id = readQueryParam(location.search, '_id');
     if (id) {
+      const tx = readQueryParam(location.search, '_tx');
+      setSelectedTransaction(tx !== null && tx !== '' ? Number(tx) : null);
       setDisabledAction(true);
       void loadRequisition(id);
       return;
@@ -393,6 +414,19 @@ export function useRequisitionForm(): IUseRequisitionForm {
     }
   };
 
+  /**
+   * Returns to the list. View mode opens in a new tab (via window.open from AllPA), so close
+   * that tab to fall back to the still-open list (which keeps its filters/pagination/scroll).
+   * When opened directly (no opener), navigate in-app instead.
+   */
+  const goBack = (): void => {
+    if (window.opener && !window.opener.closed) {
+      window.close();
+      return;
+    }
+    history.push('/pa');
+  };
+
   const handlers: IRequisitionFormHandlers = {
     updateTransactionRow,
     updateMechanicsDetails,
@@ -410,6 +444,9 @@ export function useRequisitionForm(): IUseRequisitionForm {
   return {
     isLoading,
     disabledAction,
+    selectedTransaction,
+    loadError,
+    notFound,
     transactions,
     channel,
     fiscalYear,
@@ -423,5 +460,6 @@ export function useRequisitionForm(): IUseRequisitionForm {
     handlers,
     save,
     loadMockData,
+    goBack,
   };
 }

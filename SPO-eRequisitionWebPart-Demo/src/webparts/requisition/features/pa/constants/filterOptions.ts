@@ -1,17 +1,19 @@
-// Typed accessors for the static filter option data in components/dataFilter.json.
-// Centralises the option lists so components/columns import from one typed source.
+// Typed accessors for the static filter option data in shared/data/dataFilter.json.
+// Form-specific option lists (channel/category/expense/promotion) live here; the listing
+// option lists (month/year/status/eRequisitionNo) live in shared and are re-exported below.
 
-import dataFilter from '../data/dataFilter.json';
+import dataFilter from '@/shared/data/dataFilter.json';
 import { IExpenseOption, IOption } from '@/features/pa/types';
 
 export const channelOptions: IOption[] = dataFilter.Channel;
-export const fiscalYearOptions: IOption[] = dataFilter.Year;
-export const monthOptions: IOption[] = dataFilter.Month;
 export const promotionOptions: IOption[] = dataFilter.promotionOptions;
 export const categoryOptions: IOption[] = dataFilter.Category;
 export const expenseOptions: IExpenseOption[] = dataFilter.ExpenseType;
 
-// Static filter options for the AllPA search screen (Channel/Category there are loaded
-// from SharePoint master lists at runtime, so they are not sourced from here).
-export const workflowStatusOptions: IOption[] = dataFilter.WorkFlowStatus;
-export const eRequisitionNoOptions: IOption[] = dataFilter.eRequisitionNo;
+// Listing filter options moved to shared; re-exported so existing pa imports keep working.
+export {
+  monthOptions,
+  fiscalYearOptions,
+  workflowStatusOptions,
+  eRequisitionNoOptions,
+} from '@/shared/constants/listingFilterOptions';

@@ -19,6 +19,14 @@ interface ITransactionSectionProps {
   transaction: IRequisitionTransaction;
   disabled: boolean;
   handlers: IRequisitionFormHandlers;
+  /** e-Requisition prefix (TPMNo), used to build this transaction's Ref No. */
+  tpmNo: string;
+  /** True for the transaction selected from the All Promotion Activities table. */
+  isHighlighted?: boolean;
+  /** Opens the Workflow History viewer for this transaction. */
+  onOpenHistory: (refNo: string) => void;
+  /** Opens the Attachments viewer for this transaction. */
+  onOpenAttachment: (refNo: string) => void;
 }
 
 const TransactionSection: React.FC<ITransactionSectionProps> = ({
@@ -26,9 +34,22 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
   transaction,
   disabled,
   handlers,
+  tpmNo,
+  isHighlighted,
+  onOpenHistory,
+  onOpenAttachment,
 }) => {
   const totalTI = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TI);
   const totalTD = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TD);
+  const transactionNo = transaction.tebles[0]?.Transaction ?? '';
+  const refNo = transaction.Title ?? `${tpmNo}-${transactionNo}`;
+
+  const sectionRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (isHighlighted && sectionRef.current) {
+      sectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isHighlighted]);
 
   return (
     <>
@@ -38,8 +59,12 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
         </div>
       )}
 
-      <div className="col-12 mt-3">
-        <MyDataTable data={transaction.tebles} columns={getTransactionColumns(handlers)} isPagination={false} />
+      <div className={`col-12 mt-3 ${isHighlighted ? styles.highlighted : ''}`} ref={sectionRef}>
+        <MyDataTable
+          data={transaction.tebles}
+          columns={getTransactionColumns(disabled, handlers, onOpenAttachment, tpmNo)}
+          isPagination={false}
+        />
       </div>
 
       <div className="col-12 mt-3">
@@ -155,7 +180,11 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
                   <i className="fa fa-trash me-1" /> Delete Transaction
                 </button>
               )}
-              <button type="button" className="btn btn-outline-secondary btn-sm rounded-xl">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm rounded-xl"
+                onClick={() => onOpenHistory(refNo)}
+              >
                 <i className="fa fa-history me-1" /> View Workflow History
               </button>
             </div>

@@ -3,9 +3,22 @@
 
 import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 
-import { EXPENSE_TYPE_ID, LIST_NAMES, LIST_PAGE_SIZE, TITD_TYPE } from '@/features/pa/constants';
+import {
+  EXPENSE_TYPE_ID,
+  LIST_NAMES,
+  LIST_PAGE_SIZE,
+  TITD_TYPE,
+  WORKFLOW_HISTORY_FIELDS,
+} from '@/features/pa/constants';
 import { sumCommittedByType } from '@/features/pa/utils/totals';
-import { IOption, IRequisitionRawData, IRequisitionTransaction, ISharePointItem } from '@/features/pa/types';
+import {
+  IAttachmentFile,
+  IOption,
+  IRequisitionRawData,
+  IRequisitionTransaction,
+  ISharePointItem,
+  IWorkflowHistoryEntry,
+} from '@/features/pa/types';
 
 /** Header-level values shared by every transaction when saving an e-Requisition. */
 export interface IRequisitionSaveHeader {
@@ -162,6 +175,74 @@ export class RequisitionService {
     const majorGroupCategoryMap = await this.loadMajorGroupCategoryMap();
 
     return { padRows, expenseRows, cbuRows, majorGroupCategoryMap };
+  }
+
+  /**
+   * Reads the workflow-history audit trail for one transaction (by its Ref No / Title).
+   * Tries a server-side $filter first, then falls back to fetch-all + client filter
+   * (Ref_x0020_No is not indexed). Sorted oldest-first.
+   */
+  public async getWorkflowHistory(refNo: string): Promise<IWorkflowHistoryEntry[]> {
+    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${LIST_NAMES.PA_WORKFLOW_HISTORY}')/items`;
+    const select =
+      `$select=${WORKFLOW_HISTORY_FIELDS.REF_NO},${WORKFLOW_HISTORY_FIELDS.USER_DISPLAY_NAME},` +
+      `${WORKFLOW_HISTORY_FIELDS.ACTION},${WORKFLOW_HISTORY_FIELDS.COMMENT},Created,Author/Title&$expand=Author`;
+
+    const encodedRef = refNo.replace(/'/g, "''");
+    let items: ISharePointItem[];
+    const filtered = await this.fetchAllPaged(
+      `${base}?$filter=${WORKFLOW_HISTORY_FIELDS.REF_NO} eq '${encodedRef}'&${select}&$top=${LIST_PAGE_SIZE}`,
+    );
+    if (filtered.ok) {
+      items = filtered.items;
+    } else {
+      const all = await this.fetchAllPaged(`${base}?${select}&$top=${LIST_PAGE_SIZE}`);
+      items = all.items.filter((row) => String(row[WORKFLOW_HISTORY_FIELDS.REF_NO] ?? '') === refNo);
+    }
+
+    return items
+      .map((item): IWorkflowHistoryEntry => {
+        const author = item.Author as { Title?: string } | undefined;
+        return {
+          user: String(item[WORKFLOW_HISTORY_FIELDS.USER_DISPLAY_NAME] ?? author?.Title ?? ''),
+          action: String(item[WORKFLOW_HISTORY_FIELDS.ACTION] ?? ''),
+          comment: String(item[WORKFLOW_HISTORY_FIELDS.COMMENT] ?? ''),
+          date: String(item.Created ?? ''),
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  /**
+   * Lists a transaction's attachments from the PA Documents library (files keyed by
+   * Ref No / Title). Tries a server-side $filter first, then fetch-all + client filter.
+   */
+  public async getTransactionAttachments(refNo: string): Promise<IAttachmentFile[]> {
+    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${LIST_NAMES.PA_DOCUMENTS}')/items`;
+    const select = '$select=FileLeafRef,FileRef,Title,TPMNo';
+
+    const encodedRef = refNo.replace(/'/g, "''");
+    let items: ISharePointItem[];
+    const filtered = await this.fetchAllPaged(
+      `${base}?$filter=Title eq '${encodedRef}'&${select}&$top=${LIST_PAGE_SIZE}`,
+    );
+    if (filtered.ok) {
+      items = filtered.items;
+    } else {
+      const all = await this.fetchAllPaged(`${base}?${select}&$top=${LIST_PAGE_SIZE}`);
+      items = all.items.filter((row) => String(row.Title ?? '') === refNo);
+    }
+
+    const origin = new URL(this.siteUrl).origin;
+    return items
+      .filter((item) => item.FileRef)
+      .map((item): IAttachmentFile => {
+        const fileRef = String(item.FileRef);
+        return {
+          name: String(item.FileLeafRef ?? fileRef.split('/').pop() ?? 'file'),
+          url: fileRef.indexOf('http') === 0 ? fileRef : `${origin}${fileRef}`,
+        };
+      });
   }
 
   /** True if a Promotion Activities Detail item already exists for this TPM number. */
