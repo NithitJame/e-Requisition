@@ -126,6 +126,8 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   const currentUserRef = React.useRef<ICurrentUser | null>(null);
   // Cache of the current user's full pending inbox. `refresh()` clears it to force a re-pull.
   const inboxPromiseRef = React.useRef<Promise<IApprovalInboxRow[]> | null>(null);
+  // Applies the "all channels selected by default" once, when the options first load.
+  const defaultChannelAppliedRef = React.useRef<boolean>(false);
 
   const loadInbox = React.useCallback((forceRefresh = false): Promise<IApprovalInboxRow[]> => {
     if (forceRefresh) inboxPromiseRef.current = null;
@@ -153,6 +155,10 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
       .then(({ channels, categories }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
+        if (!defaultChannelAppliedRef.current) {
+          defaultChannelAppliedRef.current = true;
+          setFilters((prev) => ({ ...prev, channel: channels }));
+        }
       })
       .catch((error) => console.error('[useApprovePaInbox] failed to load filter options.', error));
 
@@ -196,7 +202,9 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   const refresh = React.useCallback(() => runSearch(true), [runSearch]);
 
   const clear = React.useCallback((): void => {
-    setFilters(EMPTY_FILTERS);
+    // Bottom "Clear" resets every filter EXCEPT Channel; Channel is cleared only via the
+    // small Clear button next to its label.
+    setFilters((prev) => ({ ...EMPTY_FILTERS, channel: prev.channel }));
   }, []);
 
   const setDecision = React.useCallback((rowId: number, decision: TApprovalDecision): void => {

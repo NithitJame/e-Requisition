@@ -110,6 +110,8 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   const [hasSearched, setHasSearched] = React.useState<boolean>(false);
 
   const dataPromiseRef = React.useRef<Promise<IPromotionActivityRow[]> | null>(null);
+  // Applies the "all channels selected by default" once, when the options first load.
+  const defaultChannelAppliedRef = React.useRef<boolean>(false);
 
   const getService = React.useCallback((): PromotionListingService => {
     const { spHttpClient, siteUrl } = getSpfxContext();
@@ -162,6 +164,10 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
       .then(({ channels, categories }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
+        if (!defaultChannelAppliedRef.current) {
+          defaultChannelAppliedRef.current = true;
+          setFilters((prev) => ({ ...prev, channel: channels }));
+        }
       })
       .catch((err) => console.error('[usePromotionListing] failed to load filter options.', err));
 
@@ -208,7 +214,9 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   const refresh = React.useCallback(() => runSearch(true), [runSearch]);
 
   const clear = React.useCallback((): void => {
-    setFilters(EMPTY_FILTERS);
+    // Bottom "Clear" resets every filter EXCEPT Channel; Channel is cleared only via the
+    // small Clear button next to its label.
+    setFilters((prev) => ({ ...EMPTY_FILTERS, channel: prev.channel }));
     setRows([]);
     setError(null);
     setHasSearched(false);
