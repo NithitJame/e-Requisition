@@ -14,6 +14,105 @@
     display: none !important;
 }
 
+.requisition-theme-root {
+    width: 100%;
+    min-width: 0;
+}
+
+/*
+ * App-wide compact density. These rules change the actual box metrics; they do
+ * not use zoom/transform, so viewport size, scrolling and portal coordinates
+ * remain correct.
+ */
+.requisition-app {
+    --req-density: 0.8;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 100vh;
+    overflow: hidden;
+    font-size: 0.8rem;
+}
+
+.requisition-app h1 { font-size: 2rem; }
+.requisition-app h2 { font-size: 1.6rem; }
+.requisition-app h3 { font-size: 1.4rem; }
+.requisition-app h4 { font-size: 1.2rem; }
+.requisition-app h5 { font-size: 1rem; }
+.requisition-app h6 { font-size: 0.8rem; }
+
+.requisition-app .card-body {
+    padding: 0.8rem;
+}
+
+.requisition-app .btn {
+    --bs-btn-padding-x: 0.6rem;
+    --bs-btn-padding-y: 0.3rem;
+    --bs-btn-font-size: 0.8rem;
+    --bs-btn-border-radius: 0.3rem;
+}
+
+.requisition-app .btn-sm {
+    --bs-btn-padding-x: 0.4rem;
+    --bs-btn-padding-y: 0.2rem;
+    --bs-btn-font-size: 0.7rem;
+}
+
+.requisition-app .form-control,
+.requisition-app .form-select {
+    min-height: 30px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 0.3rem;
+}
+
+.requisition-app .form-control-sm,
+.requisition-app .form-select-sm {
+    min-height: 25px;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+.requisition-app .form-label {
+    margin-bottom: 0.4rem;
+}
+
+.requisition-app .table {
+    font-size: 0.8rem;
+}
+
+.requisition-app .table > :not(caption) > * > * {
+    padding: 0.4rem;
+}
+
+.requisition-app .alert {
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+}
+
+.requisition-app .list-group-item {
+    padding: 0.4rem 0.8rem;
+}
+
+.requisition-app .breadcrumb {
+    margin-bottom: 0.8rem;
+    font-size: 0.8rem;
+}
+
+/* Compact the Bootstrap spacing utilities used by this web part. */
+.requisition-app .p-2 { padding: 0.4rem !important; }
+.requisition-app .p-3 { padding: 0.8rem !important; }
+.requisition-app .px-3 {
+    padding-right: 0.8rem !important;
+    padding-left: 0.8rem !important;
+}
+.requisition-app .ps-5 { padding-left: 2.4rem !important; }
+.requisition-app .mt-3 { margin-top: 0.8rem !important; }
+.requisition-app .mb-3 { margin-bottom: 0.8rem !important; }
+.requisition-app .me-2 { margin-right: 0.4rem !important; }
+.requisition-app .ms-2 { margin-left: 0.4rem !important; }
+.requisition-app .gap-1 { gap: 0.2rem !important; }
+
 .bg-info-c1 {
     background-color: #5AB9EA !important;
 }
@@ -30,7 +129,7 @@
 /* โครงสร้างหลัก */
 #sidebar-wrapper {
     min-height: 100vh;
-    width: 320px;
+    width: min(256px, 80vw);
     /* ความกว้างตอนเปิดปกติ */
     transition: width 0.25s ease-out;
     overflow-x: hidden;
@@ -63,32 +162,32 @@
 #wrapper.toggled .sidebar-heading {
     text-align: center;
     justify-content: center;
-    font-size: 0.75rem;
-    padding: 15px 0 !important;
+    font-size: 0.6rem;
+    padding: 12px 0 !important;
 }
 
 /* จัดให้ไอคอนอยู่กึ่งกลางเมนูเมื่อ Sidebar หด */
 #wrapper.toggled .list-group-item {
     text-align: center;
-    padding: 15px 0 !important;
+    padding: 12px 0 !important;
 }
 
 /* เอาช่องว่างด้านขวาของไอคอนออกเมื่อหดตัว */
 #wrapper.toggled .list-group-item i {
     margin-right: 0 !important;
-    font-size: 1.4rem;
+    font-size: 1.12rem;
     /* ขยายไอคอนให้เด่นขึ้นตอนหด */
 }
 
 /* ปรับแต่งสไตล์ปุ่มทั่วไป */
 .sidebar-heading {
-    height: 60px;
+    height: 48px;
     display: flex;
     align-items: center;
 }
 
 .navbar {
-    height: 60px;
+    height: 48px;
 }
 
 .list-group-item-action:hover {
@@ -101,9 +200,9 @@
     background-color: rgba(255, 255, 255, 0.15) !important;
     /* เพิ่มพื้นหลังสีขาวจางๆ */
     color: #ffffff !important;
-    border-left: 4px solid #fff !important;
+    border-left: 3px solid #fff !important;
     /* เพิ่มเส้นขีดสีขาวหนาๆ ด้านซ้ายให้เด่นชัด */
-    padding-left: calc(3rem - 4px) !important;
+    padding-left: calc(2.4rem - 3px) !important;
     /* ปรับลด padding เพื่อชดเชยกับเส้นขีดขอบหนา */
 }
 
@@ -122,7 +221,7 @@
 }
 
 .rounded-xl {
-    border-radius: 30px !important;
+    border-radius: 24px !important;
 }
 
 .btn-custom-1 {
@@ -151,7 +250,63 @@ article>div {
     color: rgb(86, 128, 233);
     cursor: default;
     border: 1px solid rgb(86, 128, 233);
-    padding: 10px;
+    padding: 8px;
     text-align: center;
-    border-radius: 30px !important;
+    border-radius: 24px !important;
+}
+
+/*
+ * SearchableSelect and SweetAlert render under document.body. Dedicated class
+ * names keep their compact rules isolated from SharePoint's own portal UI.
+ */
+.requisition-dropdown-portal {
+    font-size: 0.85rem;
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.requisition-dropdown-portal .form-control {
+    min-height: 25px;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+.requisition-dropdown-portal .dropdown-item {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+.requisition-app .requisition-searchable-select {
+    font-size: 0.85rem;
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.requisition-selected-option {
+    padding: 2px 5px;
+    color: #34495e;
+    background-color: #f3f3f3;
+    border: 1px solid #a9a9a9;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 400;
+}
+
+.requisition-selected-option .fa-times {
+    color: #777;
+}
+
+.swal2-popup.requisition-swal {
+    width: 25.6em;
+    padding-bottom: 1em;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 575.98px) {
+    #sidebar-wrapper {
+        width: min(220px, 80vw);
+    }
+
+    .requisition-app .card-body {
+        padding: 0.6rem;
+    }
 }

@@ -5,7 +5,11 @@ import * as React from 'react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
-const MySwal = withReactContent(Swal);
+const MySwal = withReactContent(Swal.mixin({
+  customClass: {
+    popup: 'requisition-swal',
+  },
+}));
 
 const CONFIRM_BUTTON_COLOR = '#B7EB8F';
 const CONFIRM_BUTTON_TEXT = '<span style="color: #02542D; font-weight: bold;">OK</span>';

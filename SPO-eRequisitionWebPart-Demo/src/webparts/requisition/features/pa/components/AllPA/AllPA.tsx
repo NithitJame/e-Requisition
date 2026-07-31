@@ -41,7 +41,6 @@ const AllPA: React.FC = () => {
         options={filterOptions}
         onChange={search.setFilter}
         onSearch={search.search}
-        onRefresh={search.refresh}
         onClear={search.clear}
       />
 

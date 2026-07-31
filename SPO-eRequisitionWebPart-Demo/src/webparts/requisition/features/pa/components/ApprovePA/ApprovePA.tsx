@@ -53,7 +53,6 @@ const ApprovePA: React.FC = () => {
         options={filterOptions}
         onChange={inbox.setFilter}
         onSearch={inbox.search}
-        onRefresh={inbox.refresh}
         onClear={inbox.clear}
         onExport={inbox.exportExcel}
       />

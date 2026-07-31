@@ -50,8 +50,8 @@ export interface IUseApprovePaInbox {
   decisions: Record<number, IApprovalDecisionState>;
   submitAttempted: boolean;
   setFilter: <K extends keyof IAllPaFilterState>(key: K, value: IAllPaFilterState[K]) => void;
+  /** Always pulls a fresh pending inbox before filtering (there is no separate Refresh). */
   search: () => Promise<void>;
-  refresh: () => Promise<void>;
   clear: () => void;
   setDecision: (rowId: number, decision: TApprovalDecision) => void;
   setComment: (rowId: number, comment: string) => void;
@@ -124,7 +124,8 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   const [submitAttempted, setSubmitAttempted] = React.useState<boolean>(false);
 
   const currentUserRef = React.useRef<ICurrentUser | null>(null);
-  // Cache of the current user's full pending inbox. `refresh()` clears it to force a re-pull.
+  // Cache of the current user's full pending inbox. Search always clears it to force a re-pull
+  // (there is no separate Refresh action).
   const inboxPromiseRef = React.useRef<Promise<IApprovalInboxRow[]> | null>(null);
   // Applies the "all channels selected by default" once, when the options first load.
   const defaultChannelAppliedRef = React.useRef<boolean>(false);
@@ -157,7 +158,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
         setCategoryOptions(categories);
         if (!defaultChannelAppliedRef.current) {
           defaultChannelAppliedRef.current = true;
-          setFilters((prev) => ({ ...prev, channel: channels }));
+          setFilters((prev) => ({ ...prev, channel: channels, category: categories }));
         }
       })
       .catch((error) => console.error('[useApprovePaInbox] failed to load filter options.', error));
@@ -182,29 +183,24 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     [],
   );
 
-  const runSearch = React.useCallback(
-    async (forceRefresh: boolean): Promise<void> => {
-      setIsLoading(true);
-      try {
-        const data = await loadInbox(forceRefresh);
-        setRows(filterPromotionActivities(data, filters) as IApprovalInboxRow[]);
-      } catch (error) {
-        console.error('[useApprovePaInbox] search failed.', error);
-        setRows([]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [filters, loadInbox],
-  );
-
-  const search = React.useCallback(() => runSearch(false), [runSearch]);
-  const refresh = React.useCallback(() => runSearch(true), [runSearch]);
+  const search = React.useCallback(async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      // There is no separate Refresh action, so Search always pulls a fresh pending inbox.
+      const data = await loadInbox(true);
+      setRows(filterPromotionActivities(data, filters) as IApprovalInboxRow[]);
+    } catch (error) {
+      console.error('[useApprovePaInbox] search failed.', error);
+      setRows([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, loadInbox]);
 
   const clear = React.useCallback((): void => {
-    // Bottom "Clear" resets every filter EXCEPT Channel; Channel is cleared only via the
-    // small Clear button next to its label.
-    setFilters((prev) => ({ ...EMPTY_FILTERS, channel: prev.channel }));
+    // Bottom "Clear" resets every filter EXCEPT Channel/Category (both default to "all
+    // selected" and have no dedicated Clear of their own besides the one next to Channel).
+    setFilters((prev) => ({ ...EMPTY_FILTERS, channel: prev.channel, category: prev.category }));
   }, []);
 
   const setDecision = React.useCallback((rowId: number, decision: TApprovalDecision): void => {
@@ -276,7 +272,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
           return next;
         });
         setSubmitAttempted(false);
-        inboxPromiseRef.current = null; // force a fresh pull on the next Search/Refresh
+        inboxPromiseRef.current = null; // force a fresh pull on the next Search
       }
 
       if (result.errors.length > 0) {
@@ -307,7 +303,6 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     submitAttempted,
     setFilter,
     search,
-    refresh,
     clear,
     setDecision,
     setComment,

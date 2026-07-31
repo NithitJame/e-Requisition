@@ -94,7 +94,7 @@ const MainLayout: React.FC = () => {
     }, [location.pathname]);
 
     return (
-        <div className={`d-flex ${isSidebarOpen ? '' : 'toggled'}`} id="wrapper">
+        <div className={`requisition-app d-flex ${isSidebarOpen ? '' : 'toggled'}`} id="wrapper">
 
             {/* ─── Sidebar ด้านซ้าย ────────────────────────────────── */}
             <div className="bg-info-c1 text-white" id="sidebar-wrapper">
@@ -124,7 +124,7 @@ const MainLayout: React.FC = () => {
                                                     <i className={`fa ${menu.icon} me-2`}></i>
                                                     <span className="sidebar-text">{menu.title}</span>
                                                 </div>
-                                                <i className={`fa fa-chevron-${isThisMenuOpen ? 'up' : 'down'} sidebar-text`} style={{ fontSize: '0.8rem' }}></i>
+                                                <i className={`fa fa-chevron-${isThisMenuOpen ? 'up' : 'down'} sidebar-text`} style={{ fontSize: '0.64rem' }}></i>
                                             </>
                                         ) : (
                                             <>
@@ -157,7 +157,7 @@ const MainLayout: React.FC = () => {
                                                     to={sub.path}
                                                     className={`list-group-item list-group-item-action bg-info-c1 text-white p-2 ps-5 un-border ${isLinkActive ? 'active-menu fw-bold' : ''
                                                         }`}
-                                                    style={{ fontSize: '0.9rem' }}
+                                                    style={{ fontSize: '0.72rem' }}
                                                 >
                                                     <i className={`fa ${sub.icon} me-2`}></i>
                                                     <span className="sidebar-text">{sub.title}</span>
@@ -198,7 +198,7 @@ const MainLayout: React.FC = () => {
                     </Card>
 
                     <div className="mt-3">
-                        <Card className='card-custom-main' style={{ marginBottom: '120px' }}>
+                        <Card className='card-custom-main' style={{ marginBottom: '96px' }}>
                             <Card.Body>
                                 <Switch>
                                     <Route exact path="/pa" component={AllPA} />

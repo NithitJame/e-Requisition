@@ -133,7 +133,7 @@ const SearchableSelect: React.FC<ISearchableSelectProps> = ({
             return (
                 <div className="d-flex flex-wrap gap-1">
                     {vals.map(v => (
-                        <span key={v.value} className="badge bg-secondary d-flex align-items-center p-2" style={{ fontSize: '0.55rem' }}>
+                        <span key={v.value} className="requisition-selected-option badge d-flex align-items-center">
                             {v.label}
                             {/* 🌟 ซ่อนหรือปรับสไตล์ปุ่มกากบาทเมื่อ disabled */}
                             <i
@@ -153,7 +153,7 @@ const SearchableSelect: React.FC<ISearchableSelectProps> = ({
         const singleVal = value as IOption;
         return (
             <div className="d-flex flex-wrap gap-1">
-                <span className="badge bg-secondary d-flex align-items-center p-2" style={{ fontSize: '0.55rem' }}>
+                <span className="requisition-selected-option badge d-flex align-items-center">
                     {singleVal.label}
                     {/* 🌟 ซ่อนหรือปรับสไตล์ปุ่มกากบาทเมื่อ disabled */}
                     <i
@@ -173,14 +173,14 @@ const SearchableSelect: React.FC<ISearchableSelectProps> = ({
         <>
             <div className="position-relative" ref={dropdownRef}>
                 <div
-                    className={`form-select text-start d-flex justify-content-between align-items-center ${disabled ? 'disabled' : ''}`}
+                    className={`requisition-searchable-select form-select text-start d-flex justify-content-between align-items-center ${disabled ? 'disabled' : ''}`}
                     onClick={() => {
                         if (disabled) return; // 🌟 กันไม่ให้กดเปิด
                         isOpen ? setIsOpen(false) : handleOpenMenu();
                     }}
                     style={{
                         cursor: disabled ? 'not-allowed' : 'pointer', // 🌟 เปลี่ยนรูปเมาส์
-                        minHeight: '38px',
+                        minHeight: '30px',
                         backgroundColor: disabled ? '#e9ecef' : '#fff' // 🌟 สีพื้นหลังตอน disable (มาตรฐาน Bootstrap)
                     }}
                 >
@@ -191,10 +191,10 @@ const SearchableSelect: React.FC<ISearchableSelectProps> = ({
             {isOpen && !disabled && ReactDOM.createPortal( // 🌟 เพิ่ม !disabled กันพลาดอีกชั้น
                 <div
                     ref={menuRef}
-                    className="dropdown-menu show p-0 shadow"
+                    className="requisition-dropdown-portal dropdown-menu show p-0 shadow"
                     style={{
                         position: 'absolute',
-                        top: menuCoords.top + 4,
+                        top: menuCoords.top + 3,
                         left: menuCoords.left,
                         width: menuCoords.width,
                         zIndex: 9999
@@ -211,7 +211,7 @@ const SearchableSelect: React.FC<ISearchableSelectProps> = ({
                         />
                     </div>
 
-                    <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map(option => {
                                 const isSelected = checkIsSelected(option);
@@ -228,7 +228,7 @@ const SearchableSelect: React.FC<ISearchableSelectProps> = ({
                                 );
                             })
                         ) : (
-                            <div className="text-center text-muted p-3" style={{ fontSize: '0.9rem' }}>
+                            <div className="text-center text-muted p-3" style={{ fontSize: '0.8rem' }}>
                                 No result for "{searchTerm}"
                             </div>
                         )}

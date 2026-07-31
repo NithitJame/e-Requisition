@@ -8,6 +8,39 @@ interface IMyDataTableProps<T> {
     isPagination: boolean;
 }
 
+const compactTableStyles = {
+    headRow: {
+        style: {
+            minHeight: '45px',
+            fontSize: '11px',
+        },
+    },
+    headCells: {
+        style: {
+            paddingLeft: '13px',
+            paddingRight: '13px',
+        },
+    },
+    rows: {
+        style: {
+            minHeight: '45px',
+            fontSize: '11px',
+        },
+    },
+    cells: {
+        style: {
+            paddingLeft: '13px',
+            paddingRight: '13px',
+        },
+    },
+    pagination: {
+        style: {
+            minHeight: '45px',
+            fontSize: '11px',
+        },
+    },
+};
+
 // const customStyles = {
 //     tableWrapper: {
 //         style: {
@@ -47,7 +80,7 @@ function MyDataTable<T>({ columns, data, isPagination }: IMyDataTableProps<T>) {
                 }}
                 highlightOnHover // ไฮไลต์สีเวลาเอาเมาส์ชี้แถว
                 responsive={true}
-            // customStyles={customStyles}
+                customStyles={compactTableStyles}
             />
         </div>
     );

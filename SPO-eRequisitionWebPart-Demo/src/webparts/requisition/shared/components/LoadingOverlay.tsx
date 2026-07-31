@@ -29,7 +29,7 @@ const LoadingOverlay: React.FC<ILoadingOverlayProps> = ({
             }}
         >
             {/* วงล้อหมุนๆ ของ Bootstrap */}
-            <div className="spinner-border text-light" role="status" style={{ width: '4rem', height: '4rem' }}>
+            <div className="spinner-border text-light" role="status" style={{ width: '3.2rem', height: '3.2rem' }}>
                 <span className="visually-hidden">Loading...</span>
             </div>
             {/* ข้อความแจ้งเตือน */}

@@ -16,8 +16,8 @@ export interface IPromotionListingFiltersProps {
   filters: IAllPaFilterState;
   options: IPromotionListingFilterOptions;
   onChange: <K extends keyof IAllPaFilterState>(key: K, value: IAllPaFilterState[K]) => void;
+  /** Also pulls fresh data before filtering — there is no separate Refresh button. */
   onSearch: () => void;
-  onRefresh: () => void;
   onClear: () => void;
   /** Optional "Export To Excel" handler. When omitted the button stays inert. */
   onExport?: () => void;

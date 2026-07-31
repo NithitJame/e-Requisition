@@ -1,19 +1,24 @@
 // Fixed width for the footer action buttons (replaces inline style={{ width: '150px' }}).
 
 .actionButton {
-  width: 150px;
+  width: 120px;
 }
 
 // Dev-only toolbar holding the "Seed Mock Data" button (not shown in production).
 .devToolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 // Content container for the Workflow History / Attachments viewer modals.
 .viewerModal {
-  padding: 20px;
-  min-width: 480px;
-  max-width: 720px;
+  padding: 16px;
+  min-width: min(384px, calc(100vw - 32px));
+  max-width: min(576px, calc(100vw - 32px));
+  font-size: 0.8rem;
+
+  h5 {
+    font-size: 1rem;
+  }
 }

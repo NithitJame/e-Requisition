@@ -41,6 +41,11 @@ export interface IPromotionListingHookConfig extends IPromotionListingConfig {
   viewRoutePrefix: string;
   /** Base name for the exported CSV file (no extension). */
   exportFileName: string;
+  /**
+   * Pre-select every Category on first load (default true). Set false where the Category
+   * filter is hidden (AllTA) so it doesn't silently exclude rows with inactive categories.
+   */
+  defaultAllCategory?: boolean;
 }
 
 const EMPTY_FILTERS: IAllPaFilterState = {
@@ -64,8 +69,8 @@ export interface IUsePromotionListing {
   categoryOptions: IOption[];
   rows: IPromotionActivityRow[];
   setFilter: <K extends keyof IAllPaFilterState>(key: K, value: IAllPaFilterState[K]) => void;
+  /** Always pulls fresh data from SharePoint before filtering (there is no separate Refresh). */
   search: () => Promise<void>;
-  refresh: () => Promise<void>;
   clear: () => void;
   view: (row: IPromotionActivityRow) => void;
   exportExcel: () => void;
@@ -110,8 +115,8 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   const [hasSearched, setHasSearched] = React.useState<boolean>(false);
 
   const dataPromiseRef = React.useRef<Promise<IPromotionActivityRow[]> | null>(null);
-  // Applies the "all channels selected by default" once, when the options first load.
-  const defaultChannelAppliedRef = React.useRef<boolean>(false);
+  // Applies the "all channels/categories selected by default" once, when options first load.
+  const defaultFiltersAppliedRef = React.useRef<boolean>(false);
 
   const getService = React.useCallback((): PromotionListingService => {
     const { spHttpClient, siteUrl } = getSpfxContext();
@@ -164,9 +169,13 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
       .then(({ channels, categories }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
-        if (!defaultChannelAppliedRef.current) {
-          defaultChannelAppliedRef.current = true;
-          setFilters((prev) => ({ ...prev, channel: channels }));
+        if (!defaultFiltersAppliedRef.current) {
+          defaultFiltersAppliedRef.current = true;
+          setFilters((prev) => ({
+            ...prev,
+            channel: channels,
+            ...(config.defaultAllCategory !== false ? { category: categories } : {}),
+          }));
         }
       })
       .catch((err) => console.error('[usePromotionListing] failed to load filter options.', err));
@@ -181,42 +190,38 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     [],
   );
 
-  const runSearch = React.useCallback(
-    async (forceRefresh: boolean): Promise<void> => {
-      // Month-range validation: Promotion Month From must not be later than To (fiscal order).
-      const from = monthOrdinal(filters.monthFrom);
-      const to = monthOrdinal(filters.monthTo);
-      if (from !== undefined && to !== undefined && from > to) {
-        setHasSearched(true);
-        setRows([]);
-        setError('Promotion Month From ต้องไม่มากกว่า Promotion Month To');
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
+  const search = React.useCallback(async (): Promise<void> => {
+    // Month-range validation: Promotion Month From must not be later than To (fiscal order).
+    const from = monthOrdinal(filters.monthFrom);
+    const to = monthOrdinal(filters.monthTo);
+    if (from !== undefined && to !== undefined && from > to) {
       setHasSearched(true);
-      try {
-        const data = await loadData(forceRefresh);
-        setRows(filterPromotionActivities(data, filters));
-      } catch (err) {
-        console.error('[usePromotionListing] search failed.', err);
-        setRows([]);
-        setError('ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [filters, loadData],
-  );
+      setRows([]);
+      setError('Promotion Month From ต้องไม่มากกว่า Promotion Month To');
+      return;
+    }
 
-  const search = React.useCallback(() => runSearch(false), [runSearch]);
-  const refresh = React.useCallback(() => runSearch(true), [runSearch]);
+    setIsLoading(true);
+    setError(null);
+    setHasSearched(true);
+    try {
+      // There is no separate Refresh action, so Search always pulls fresh data from
+      // SharePoint (bypasses the warm-up cache) before filtering.
+      const data = await loadData(true);
+      setRows(filterPromotionActivities(data, filters));
+    } catch (err) {
+      console.error('[usePromotionListing] search failed.', err);
+      setRows([]);
+      setError('ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, loadData]);
 
   const clear = React.useCallback((): void => {
-    // Bottom "Clear" resets every filter EXCEPT Channel; Channel is cleared only via the
-    // small Clear button next to its label.
-    setFilters((prev) => ({ ...EMPTY_FILTERS, channel: prev.channel }));
+    // Bottom "Clear" resets every filter EXCEPT Channel/Category (both default to "all
+    // selected" and have no dedicated Clear of their own besides the one next to Channel).
+    setFilters((prev) => ({ ...EMPTY_FILTERS, channel: prev.channel, category: prev.category }));
     setRows([]);
     setError(null);
     setHasSearched(false);
@@ -243,7 +248,6 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     rows,
     setFilter,
     search,
-    refresh,
     clear,
     view,
     exportExcel,

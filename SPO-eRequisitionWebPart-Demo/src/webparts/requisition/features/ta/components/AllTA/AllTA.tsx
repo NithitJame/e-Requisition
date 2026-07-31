@@ -1,6 +1,6 @@
 // All Trade Agreement listing screen. Thin shell: reuses the shared listing hook, filter form,
-// and columns (with TA formatting: currency totals + truncated Mechanics, no Category column).
-// Title/breadcrumb are rendered by MainLayout from the menu route.
+// and columns (with TA formatting: currency totals + truncated Mechanics; Category shown,
+// same as AllPA). Title/breadcrumb are rendered by MainLayout from the menu route.
 
 import * as React from 'react';
 
@@ -22,7 +22,6 @@ const AllTA: React.FC = () => {
   const columns = React.useMemo(
     () =>
       getPromotionListingColumns(search.view, {
-        includeCategory: false,
         currency: true,
         mechanicsTooltip: true,
       }),
@@ -50,10 +49,8 @@ const AllTA: React.FC = () => {
         options={filterOptions}
         onChange={search.setFilter}
         onSearch={search.search}
-        onRefresh={search.refresh}
         onClear={search.clear}
         onExport={search.exportExcel}
-        showCategory={false}
       />
 
       <div className="row mt-3">
