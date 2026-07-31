@@ -53,7 +53,6 @@ const AllTA: React.FC = () => {
         onRefresh={search.refresh}
         onClear={search.clear}
         onExport={search.exportExcel}
-        showChannelClear={false}
         showCategory={false}
       />
 

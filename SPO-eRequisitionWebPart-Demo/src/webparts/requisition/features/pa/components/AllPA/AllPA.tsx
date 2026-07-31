@@ -43,7 +43,6 @@ const AllPA: React.FC = () => {
         onSearch={search.search}
         onRefresh={search.refresh}
         onClear={search.clear}
-        showChannelClear={false}
       />
 
       <div className="row mt-3">
