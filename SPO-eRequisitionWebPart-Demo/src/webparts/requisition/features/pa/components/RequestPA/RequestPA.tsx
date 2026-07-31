@@ -89,13 +89,13 @@ const RequestPA: React.FC = () => {
         onPromotionMonthChange={form.setPromotionMonth}
       />
 
-      <div className="row mt-3">
+      <div className="row">
         <div className="col-12">
           <hr className="hr-dashed" />
         </div>
       </div>
 
-      <div className="row mt-3">
+      <div className="row">
         {form.transactions.map((transaction, index) => (
           <TransactionSection
             key={index}

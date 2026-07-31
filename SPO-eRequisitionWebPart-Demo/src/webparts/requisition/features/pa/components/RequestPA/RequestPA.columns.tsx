@@ -16,6 +16,52 @@ import {
 
 const RequiredMark = (): React.ReactElement => <span className="text-danger">*</span>;
 
+/** Bolds a column header (RequestPA's tables only — not the shared DataTable default). */
+const boldHeader = (label: React.ReactNode): React.ReactElement => <strong>{label}</strong>;
+
+/**
+ * Numeric input that shows the raw typed value while focused (so decimals can be typed
+ * normally) and reformats to 2 decimals on blur. Used for "Committed", which is editable —
+ * unlike "Adjust"/totals (always disabled), reformatting on every keystroke would fight typing
+ * (e.g. "12." would immediately snap to "12.00", blocking further decimal entry).
+ */
+const CommittedInput: React.FC<{
+  value: number | string;
+  disabled: boolean;
+  onCommit: (rawValue: string) => void;
+}> = ({ value, disabled, onCommit }) => {
+  const [isFocused, setIsFocused] = React.useState(false);
+  const [draft, setDraft] = React.useState(String(value));
+
+  // Keep the draft in sync with external changes (e.g. loaded from server) while not editing.
+  React.useEffect(() => {
+    if (!isFocused) setDraft(String(value));
+  }, [value, isFocused]);
+
+  const displayValue = isFocused ? draft : (Number(value) || 0).toFixed(2);
+
+  return (
+    <input
+      type="number"
+      className="form-control text-end"
+      value={displayValue}
+      disabled={disabled}
+      onFocus={() => {
+        setIsFocused(true);
+        setDraft(String(value));
+      }}
+      onChange={(e) => {
+        const next = e.target.value;
+        setDraft(next);
+        if (next === '' || Number(next) >= 0) {
+          onCommit(next);
+        }
+      }}
+      onBlur={() => setIsFocused(false)}
+    />
+  );
+};
+
 /**
  * Columns for the per-transaction summary table.
  * @param disabled read-only (view) mode — disables Promotion Type / Category / week checkboxes.
@@ -30,13 +76,13 @@ export function getTransactionColumns(
 ): TableColumn<ITransactionRow>[] {
   return [
     {
-      name: 'Transaction',
+      name: boldHeader('Transaction'),
       selector: (row) => row.Transaction,
       sortable: false,
       width: '95px',
     },
     {
-      name: <>Promotion Type <RequiredMark /></>,
+      name: boldHeader(<>Promotion Type <RequiredMark /></>),
       cell: (row) => (
         <div className="w-100">
           <SearchableSelect
@@ -51,10 +97,11 @@ export function getTransactionColumns(
       ),
       ignoreRowClick: true,
       allowOverflow: true,
-      width: '180px',
+      minWidth: '180px',
+      grow: 4,
     },
     {
-      name: <>Category <RequiredMark /></>,
+      name: boldHeader(<>Category <RequiredMark /></>),
       cell: (row) => (
         <div className="w-100">
           <SearchableSelect
@@ -69,10 +116,11 @@ export function getTransactionColumns(
       ),
       ignoreRowClick: true,
       allowOverflow: true,
-      width: '250px',
+      minWidth: '250px',
+      grow: 4,
     },
     {
-      name: 'W1-2',
+      name: boldHeader('W1-2'),
       cell: (row) => (
         <div className="w-100">
           <input
@@ -89,7 +137,7 @@ export function getTransactionColumns(
       width: '95px',
     },
     {
-      name: 'W3-4',
+      name: boldHeader('W3-4'),
       cell: (row) => (
         <div className="w-100">
           <input
@@ -106,11 +154,11 @@ export function getTransactionColumns(
       width: '95px',
     },
     {
-      name: 'Attachment',
+      name: boldHeader('Attachment'),
       cell: (row) => (
         <div className="d-flex gap-2">
           <button
-            className="btn btn-sm btn-outline-secondary rounded-xl"
+            className="btn btn-outline-secondary rounded-xl"
             onClick={() => onOpenAttachment(`${tpmNo}-${row.Transaction}`)}
           >
             <i className="fa fa-paperclip me-1" /> Attachment
@@ -123,22 +171,24 @@ export function getTransactionColumns(
       width: '180px',
     },
     {
-      name: 'Amount',
+      name: boldHeader('Amount'),
       selector: (row) => row.Amount,
       sortable: false,
-      width: '150px',
+      minWidth: '150px',
+      grow: 2,
     },
     {
-      name: 'Status',
+      name: boldHeader('Status'),
       selector: (row) => row.Status ?? '',
       sortable: false,
-      width: '95px',
+      minWidth: '95px',
+      grow: 1,
     },
     {
-      name: 'Closed',
+      name: boldHeader('Closed'),
       cell: () => (
         <div className="d-flex gap-2">
-          <button className="btn btn-sm btn-outline-secondary rounded-xl" disabled>
+          <button className="btn btn-outline-secondary rounded-xl me-2" disabled>
             Closed
           </button>
         </div>
@@ -159,7 +209,7 @@ export function getExpenseColumns(
 ): TableColumn<IExpenseRow>[] {
   return [
     {
-      name: <>Expense Type <RequiredMark /></>,
+      name: boldHeader(<>Expense Type <RequiredMark /></>),
       cell: (row, rowIndex) => {
         const selectedValue =
           typeof row.ExpenseType === 'object'
@@ -180,50 +230,52 @@ export function getExpenseColumns(
       },
       ignoreRowClick: true,
       allowOverflow: true,
-      width: '250px',
+      minWidth: '250px',
+      grow: 5,
     },
     {
-      name: 'TITDType',
+      name: boldHeader('TITDType'),
       cell: (row) => (
         <input
           type="text"
-          className="form-control form-control-sm text-center"
+          className="form-control text-center"
           value={row.TITDType || ''}
           disabled
         />
       ),
-      width: '100px',
+      minWidth: '100px',
+      grow: 2,
     },
     {
-      name: <>Committed <RequiredMark /></>,
+      name: boldHeader(<>Committed <RequiredMark /></>),
       cell: (row, rowIndex) => (
-        <input
-          type="number"
-          className="form-control form-control-sm text-end"
+        <CommittedInput
           value={row.Committed}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === '' || Number(value) >= 0) {
-              handlers.updateExpenseRow(parentIndex, rowIndex, 'Committed', value);
-            }
-          }}
           disabled={disabled}
+          onCommit={(value) => handlers.updateExpenseRow(parentIndex, rowIndex, 'Committed', value)}
         />
       ),
-      width: '120px',
+      minWidth: '120px',
+      grow: 2,
     },
     {
-      name: 'Adjust',
+      name: boldHeader('Adjust'),
       cell: (row) => (
-        <input type="number" className="form-control form-control-sm text-end" value={row.Adjust} disabled />
+        <input
+          type="number"
+          className="form-control text-end"
+          value={(Number(row.Adjust) || 0).toFixed(2)}
+          disabled
+        />
       ),
-      width: '100px',
+      minWidth: '100px',
+      grow: 2,
     },
     {
-      name: 'Closed',
+      name: boldHeader('Closed'),
       cell: () => (
         <div className="d-flex gap-2">
-          <button className="btn btn-sm btn-outline-secondary rounded-xl" disabled>
+          <button className="btn btn-outline-secondary rounded-xl me-2" disabled>
             Closed
           </button>
         </div>
@@ -239,7 +291,7 @@ export function getExpenseColumns(
         <div className="w-100 text-center">
           {rowIndex !== 0 && !disabled ? (
             <button
-              className="btn btn-sm btn-outline-danger rounded-xl"
+              className="btn btn-sm btn-outline-danger rounded-xl me-2"
               onClick={() => handlers.removeExpenseRow(parentIndex, rowIndex)}
             >
               <i className="fa fa-close" />
@@ -250,7 +302,7 @@ export function getExpenseColumns(
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
-      width: '25px',
+      width: '45px',
     },
   ];
 }
@@ -263,7 +315,7 @@ export function getChargeToCBUColumns(
 ): TableColumn<IChargeToCBURow>[] {
   return [
     {
-      name: <>MajorGroup Name <RequiredMark /></>,
+      name: boldHeader(<>MajorGroup Name <RequiredMark /></>),
       cell: (row, rowIndex) => {
         const selectedValue =
           typeof row.MajorGroupName === 'object'
@@ -284,21 +336,23 @@ export function getChargeToCBUColumns(
       },
       ignoreRowClick: true,
       allowOverflow: true,
-      width: '200px',
+      minWidth: '160px',
+      grow: 0,
     },
     {
-      name: 'Category',
+      name: boldHeader('Category'),
       cell: (row) => (
-        <input type="text" className="form-control form-control-sm text-end" value={row.Category} disabled />
+        <input type="text" className="form-control text-end" value={row.Category} disabled />
       ),
-      width: '120px',
+      minWidth: '90px',
+      grow: 4,
     },
     {
-      name: 'Allocation',
+      name: boldHeader(<>% Allocation <RequiredMark /></>),
       cell: (row, rowIndex) => (
         <input
           type="number"
-          className="form-control form-control-sm text-end"
+          className="form-control text-end"
           value={row.Allocation}
           onChange={(e) => {
             const value = e.target.value;
@@ -309,7 +363,8 @@ export function getChargeToCBUColumns(
           disabled={disabled}
         />
       ),
-      width: '120px',
+      minWidth: '100px',
+      grow: 1.5,
     },
     {
       name: '',
@@ -317,7 +372,7 @@ export function getChargeToCBUColumns(
         <div className="w-100 text-center">
           {rowIndex !== 0 && !disabled ? (
             <button
-              className="btn btn-sm btn-outline-danger rounded-xl"
+              className="btn btn-sm btn-outline-danger rounded-xl me-2"
               onClick={() => handlers.removeChargeToCBURow(parentIndex, rowIndex)}
             >
               <i className="fa fa-close" />
@@ -328,7 +383,7 @@ export function getChargeToCBUColumns(
       ignoreRowClick: true,
       allowOverflow: true,
       button: true,
-      width: '25px',
+      width: '45px',
     },
   ];
 }

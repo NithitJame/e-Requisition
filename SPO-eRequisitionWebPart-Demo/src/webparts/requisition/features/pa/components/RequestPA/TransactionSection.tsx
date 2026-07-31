@@ -84,7 +84,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
       <div className="col-12 mt-3">
         <div className="row">
           {/* Left: Estimated Promotion Expense */}
-          <div className="col-12 col-xl-7 col-lg-7 col-md-7">
+          <div className="col-12 col-xl-8 col-lg-7 col-md-7">
             <div className="tag-custom-1 mb-3">Estimated Promotion Expense</div>
 
             <div className="border rounded">
@@ -108,14 +108,14 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
             </div>
 
             <div className="row mt-3">
-              <div className="col-12 col-md-9 offset-md-3">
-                <table className="table table-sm table-bordered">
+              <div className="col-12">
+                <table className="table table-sm table-borderless">
                   <tbody>
                     <tr>
-                      <td rowSpan={2} className={`align-middle fw-bold bg-light ${styles.totalsLabelCell}`}>
+                      <td rowSpan={2} className={`align-middle fw-bold ${styles.totalsLabelCell}`}>
                         Total spending
                       </td>
-                      <td className={`fw-bold text-center ${styles.totalsTypeCell}`}>TI</td>
+                      <td className={`text-center ${styles.totalsTypeCell}`}>TI</td>
                       <td>
                         <input
                           type="text"
@@ -135,7 +135,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
                       </td>
                     </tr>
                     <tr>
-                      <td className="fw-bold text-center">TD</td>
+                      <td className="text-center">TD</td>
                       <td>
                         <input
                           type="text"
@@ -191,7 +191,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
           </div>
 
           {/* Right: Charge to CBU */}
-          <div className="col-12 col-xl-5 col-lg-5 col-md-5">
+          <div className="col-12 col-xl-4 col-lg-5 col-md-5">
             <div className="tag-custom-1 mb-3">Charge to CBU</div>
 
             <div className="border rounded">

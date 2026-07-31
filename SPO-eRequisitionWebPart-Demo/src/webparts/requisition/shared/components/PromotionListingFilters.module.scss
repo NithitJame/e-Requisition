@@ -11,16 +11,11 @@
   width: 80px;
 }
 
-// Slightly larger, higher-contrast radios used only by the Promotion Week filter.
+// Slightly larger radios used only by the Promotion Week filter (border contrast is now
+// handled app-wide by the .requisition-app .form-check-input rule in assets/main.css).
 .promotionWeekOptions {
   :global(.form-check-input) {
     width: 1.15em;
     height: 1.15em;
-    border: 1.5px solid #343a40;
-    opacity: 1;
-  }
-
-  :global(.form-check-input:checked) {
-    border-color: #084298;
   }
 }

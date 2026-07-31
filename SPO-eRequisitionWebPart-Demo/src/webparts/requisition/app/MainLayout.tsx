@@ -198,7 +198,7 @@ const MainLayout: React.FC = () => {
                     </Card>
 
                     <div className="mt-3">
-                        <Card className='card-custom-main' style={{ marginBottom: '96px' }}>
+                        <Card className='card-custom-main' style={{ marginBottom: '150px' }}>
                             <Card.Body>
                                 <Switch>
                                     <Route exact path="/pa" component={AllPA} />
