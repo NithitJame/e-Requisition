@@ -18,6 +18,7 @@ const PromotionListingFilters: React.FC<IPromotionListingFiltersProps> = ({
   onSearch,
   onClear,
   onExport,
+  extraAction,
   showChannelClear = true,
   showCategory = true,
 }) => (
@@ -123,7 +124,7 @@ const PromotionListingFilters: React.FC<IPromotionListingFiltersProps> = ({
     <div className="row mt-5">
       <div className="col-12">
         <label className="fw-bold mb-2">Promotion Week</label>
-        <div className={styles.promotionWeekOptions}>
+        <div>
           {PROMOTION_WEEKS.map((week, index) => (
             <Form.Check
               key={week}
@@ -145,6 +146,7 @@ const PromotionListingFilters: React.FC<IPromotionListingFiltersProps> = ({
         <button className="btn btn-secondary btn-custom-1 rounded-xl me-2" onClick={onExport}>
           Export To Excel
         </button>
+        {extraAction}
       </div>
       <div className="col-6 text-end">
         <button

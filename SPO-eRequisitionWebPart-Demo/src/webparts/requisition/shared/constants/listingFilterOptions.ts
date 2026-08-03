@@ -6,6 +6,5 @@ import dataFilter from '@/shared/data/dataFilter.json';
 import { IOption } from '@/shared/types';
 
 export const monthOptions: IOption[] = dataFilter.Month;
-export const fiscalYearOptions: IOption[] = dataFilter.Year;
 export const workflowStatusOptions: IOption[] = dataFilter.WorkFlowStatus;
 export const eRequisitionNoOptions: IOption[] = dataFilter.eRequisitionNo;

@@ -1,5 +1,6 @@
 // Props for the shared promotion/trade-agreement listing filter form.
 
+import type { ReactNode } from 'react';
 import { IAllPaFilterState, IOption } from '@/shared/types';
 
 /** Static + dynamically-loaded option lists the filter selectors render. */
@@ -21,6 +22,8 @@ export interface IPromotionListingFiltersProps {
   onClear: () => void;
   /** Optional "Export To Excel" handler. When omitted the button stays inert. */
   onExport?: () => void;
+  /** Optional extra action rendered right after "Export To Excel" (e.g. Approve's Confirm button). */
+  extraAction?: ReactNode;
   /** Shows the small inline "Clear" button next to the Channel label. Defaults to true. */
   showChannelClear?: boolean;
   /** Shows the Category filter. Defaults to true (AllTA hides it per its SRS filter list). */

@@ -50,11 +50,24 @@ function monthOrdinal(option: IOption | null): number | undefined {
   return FISCAL_ORDINAL_BY_MONTH[option.label] ?? FISCAL_ORDINAL_BY_MONTH[String(option.value)];
 }
 
-/** True when the row satisfies the selected Promotion Week radio. */
+/**
+ * Distinct, sorted E-Requisition No. (`TPMNo`) options derived from a set of rows — reflects
+ * whatever is actually loaded from SharePoint right now, instead of a stale bundled list.
+ */
+export function buildERequisitionNoOptions(rows: IPromotionActivityRow[]): IOption[] {
+  const values = new Set<string>();
+  for (const row of rows) {
+    if (row.TPMNo) values.add(row.TPMNo);
+  }
+  return Array.from(values)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map((tpmNo) => ({ value: tpmNo, label: tpmNo }));
+}
+
+/** True when the row satisfies the selected Promotion Week radio. "All" applies no constraint. */
 function matchesWeek(week: string, row: IPromotionActivityRow): boolean {
   if (week === PROMOTION_WEEK.W1_2) return row.W12;
   if (week === PROMOTION_WEEK.W3_4) return row.W34;
-  if (week === PROMOTION_WEEK.ALL) return row.W12 && row.W34; // covers the whole month
   return true;
 }
 

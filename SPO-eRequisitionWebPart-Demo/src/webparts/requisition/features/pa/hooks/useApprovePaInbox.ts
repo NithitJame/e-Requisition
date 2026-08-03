@@ -3,11 +3,11 @@
 // The component renders UI and delegates every state change / data op here (CONVENTIONS §6).
 
 import * as React from 'react';
-import { SPHttpClient } from '@microsoft/sp-http';
 
 import { ApprovalService } from '@/features/pa/services/ApprovalService';
 import { PromotionActivityService } from '@/features/pa/services/PromotionActivityService';
 import { filterPromotionActivities } from '@/features/pa/utils/promotionActivityFilter';
+import { buildERequisitionNoOptions } from '@/shared/utils/promotionListingFilter';
 import { APPROVAL_ACTION } from '@/features/pa/constants';
 import {
   IAllPaFilterState,
@@ -19,12 +19,12 @@ import {
   TApprovalDecision,
 } from '@/features/pa/types';
 import { exportRowsToCsv, IExportColumn } from '@/shared/utils/exportCsv';
+import { multiSelectSummary, singleSelectSummary } from '@/shared/utils/filterSummary';
 import { showConfirmDialog, showErrorAlert, showSuccessAlert, showWarningAlert } from '@/shared/utils/notify';
 
 /** SPFx context published on `window` by RequisitionWebPart.render (see useRequisitionForm). */
 interface ISpfxWindow {
   _siteUrl?: string;
-  __spfxSpHttpClient?: SPHttpClient;
   __mode?: string;
 }
 
@@ -46,6 +46,8 @@ export interface IUseApprovePaInbox {
   filters: IAllPaFilterState;
   channelOptions: IOption[];
   categoryOptions: IOption[];
+  fiscalYearOptions: IOption[];
+  eRequisitionNoOptions: IOption[];
   rows: IApprovalInboxRow[];
   decisions: Record<number, IApprovalDecisionState>;
   submitAttempted: boolean;
@@ -54,29 +56,25 @@ export interface IUseApprovePaInbox {
   search: () => Promise<void>;
   clear: () => void;
   setDecision: (rowId: number, decision: TApprovalDecision) => void;
+  /**
+   * Bulk-applies (or clears) a decision for every row currently in `rows` — the whole
+   * filtered result set, not just the visible page. Toggle semantics: if every row already
+   * has this decision, it clears all of them back to "no decision"; otherwise it overwrites
+   * every row (including ones with the opposite decision already set) to this one.
+   */
+  setAllDecisions: (decision: TApprovalDecision) => void;
   setComment: (rowId: number, comment: string) => void;
   submit: () => Promise<void>;
   exportExcel: () => void;
   view: (row: IApprovalInboxRow) => void;
 }
 
-function getSpfxContext(): { spHttpClient: SPHttpClient; siteUrl: string } {
-  const spfxWindow = window as unknown as ISpfxWindow;
-  const { __spfxSpHttpClient: spHttpClient, _siteUrl: siteUrl } = spfxWindow;
-  if (!spHttpClient || !siteUrl) {
-    throw new Error('SPFx context is not available on window.');
-  }
-  return { spHttpClient, siteUrl };
-}
-
 function getApprovalService(): ApprovalService {
-  const { spHttpClient, siteUrl } = getSpfxContext();
-  return new ApprovalService(spHttpClient, siteUrl);
+  return new ApprovalService();
 }
 
 function getPromotionActivityService(): PromotionActivityService {
-  const { spHttpClient, siteUrl } = getSpfxContext();
-  return new PromotionActivityService(spHttpClient, siteUrl);
+  return new PromotionActivityService();
 }
 
 /** Builds the URL that opens a single requisition in a new tab (local debug vs. deployed). */
@@ -96,6 +94,7 @@ function buildViewUrl(tpmNo: string): string {
 /** Columns exported to CSV (business fields only; decisions are per-session, not exported). */
 const EXPORT_COLUMNS: IExportColumn<IApprovalInboxRow>[] = [
   { header: 'Status', value: (r) => r.WorkflowStatus?.LookupValue ?? '' },
+  { header: 'Category', value: (r) => r.Category.map((c) => c.LookupValue).join(', ') },
   { header: 'E-Requisition No.', value: (r) => r.TPMNo },
   { header: 'Transaction', value: (r) => r.Transaction },
   { header: 'Channel', value: (r) => r.CustomerSubGroup?.LookupValue ?? '' },
@@ -117,6 +116,8 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   const [filters, setFilters] = React.useState<IAllPaFilterState>(EMPTY_FILTERS);
   const [channelOptions, setChannelOptions] = React.useState<IOption[]>([]);
   const [categoryOptions, setCategoryOptions] = React.useState<IOption[]>([]);
+  const [fiscalYearOptions, setFiscalYearOptions] = React.useState<IOption[]>([]);
+  const [eRequisitionNoOptions, setERequisitionNoOptions] = React.useState<IOption[]>([]);
   const [rows, setRows] = React.useState<IApprovalInboxRow[]>([]);
   const [decisions, setDecisions] = React.useState<Record<number, IApprovalDecisionState>>({});
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -153,9 +154,10 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   React.useEffect(() => {
     getPromotionActivityService()
       .getFilterOptions()
-      .then(({ channels, categories }) => {
+      .then(({ channels, categories, fiscalYears }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
+        setFiscalYearOptions(fiscalYears);
         if (!defaultChannelAppliedRef.current) {
           defaultChannelAppliedRef.current = true;
           setFilters((prev) => ({ ...prev, channel: channels, category: categories }));
@@ -167,6 +169,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     loadInbox()
       .then((data) => {
         setRows(data);
+        setERequisitionNoOptions(buildERequisitionNoOptions(data));
         setIsLoading(false);
       })
       .catch((error) => {
@@ -188,6 +191,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     try {
       // There is no separate Refresh action, so Search always pulls a fresh pending inbox.
       const data = await loadInbox(true);
+      setERequisitionNoOptions(buildERequisitionNoOptions(data));
       setRows(filterPromotionActivities(data, filters) as IApprovalInboxRow[]);
     } catch (error) {
       console.error('[useApprovePaInbox] search failed.', error);
@@ -207,6 +211,23 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     setDecisions((prev) => ({ ...prev, [rowId]: { decision, comment: prev[rowId]?.comment ?? '' } }));
   }, []);
 
+  const setAllDecisions = React.useCallback(
+    (decision: TApprovalDecision): void => {
+      setDecisions((prev) => {
+        const allAlreadySet = rows.length > 0 && rows.every((row) => prev[row.Id]?.decision === decision);
+        const next = { ...prev };
+        for (const row of rows) {
+          next[row.Id] = {
+            decision: allAlreadySet ? undefined : decision,
+            comment: prev[row.Id]?.comment ?? '',
+          };
+        }
+        return next;
+      });
+    },
+    [rows],
+  );
+
   const setComment = React.useCallback((rowId: number, comment: string): void => {
     setDecisions((prev) => ({ ...prev, [rowId]: { decision: prev[rowId]?.decision, comment } }));
   }, []);
@@ -216,8 +237,19 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   }, []);
 
   const exportExcel = React.useCallback((): void => {
-    exportRowsToCsv('promotion-activities-approve', EXPORT_COLUMNS, rows);
-  }, [rows]);
+    const summaryBlock: Array<[string, string]> = [
+      ['Channel', multiSelectSummary(filters.channel, channelOptions)],
+      ['Category', multiSelectSummary(filters.category, categoryOptions)],
+      ['Fiscal Year', singleSelectSummary(filters.fiscalYear)],
+      ['Promotion Month From', singleSelectSummary(filters.monthFrom)],
+      ['Promotion Month To', singleSelectSummary(filters.monthTo)],
+      ['Status', singleSelectSummary(filters.workflowStatus)],
+      ['E-Requisition No.', singleSelectSummary(filters.eRequisitionNo)],
+      ['Expected to Close', singleSelectSummary(filters.expectedToClose)],
+      ['Promotion Week', filters.promotionWeek ?? 'All'],
+    ];
+    exportRowsToCsv('promotion-activities-approve', EXPORT_COLUMNS, rows, summaryBlock);
+  }, [rows, filters, channelOptions, categoryOptions]);
 
   const submit = React.useCallback(async (): Promise<void> => {
     setSubmitAttempted(true);
@@ -298,6 +330,8 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     filters,
     channelOptions,
     categoryOptions,
+    fiscalYearOptions,
+    eRequisitionNoOptions,
     rows,
     decisions,
     submitAttempted,
@@ -305,6 +339,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     search,
     clear,
     setDecision,
+    setAllDecisions,
     setComment,
     submit,
     exportExcel,

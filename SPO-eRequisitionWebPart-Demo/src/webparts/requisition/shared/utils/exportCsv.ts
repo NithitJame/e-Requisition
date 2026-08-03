@@ -19,11 +19,21 @@ function toCsvField(raw: string | number | undefined | null): string {
 /**
  * Builds a CSV string from rows + column definitions and triggers a browser download.
  * A UTF-8 BOM (﻿) is prepended so Excel renders Thai/Unicode text correctly.
+ * @param summaryBlock optional label/value pairs (e.g. the search filters in effect) rendered
+ * as their own rows above the table, separated from it by one blank line.
  */
-export function exportRowsToCsv<T>(fileName: string, columns: IExportColumn<T>[], rows: T[]): void {
+export function exportRowsToCsv<T>(
+  fileName: string,
+  columns: IExportColumn<T>[],
+  rows: T[],
+  summaryBlock?: Array<[string, string]>,
+): void {
+  const summaryLines = summaryBlock
+    ? [...summaryBlock.map(([label, value]) => `${toCsvField(label)},${toCsvField(value)}`), '']
+    : [];
   const headerLine = columns.map((c) => toCsvField(c.header)).join(',');
   const dataLines = rows.map((row) => columns.map((c) => toCsvField(c.value(row))).join(','));
-  const csv = [headerLine, ...dataLines].join('\r\n');
+  const csv = [...summaryLines, headerLine, ...dataLines].join('\r\n');
 
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

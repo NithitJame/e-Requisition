@@ -3,23 +3,12 @@
 // Components render the modals and delegate loading here (see docs/CONVENTIONS.md §6).
 
 import * as React from 'react';
-import { SPHttpClient } from '@microsoft/sp-http';
 
 import { RequisitionService } from '@/features/pa/services/RequisitionService';
 import { IAttachmentFile, IWorkflowHistoryEntry } from '@/features/pa/types';
 
-interface ISpfxWindow {
-  _siteUrl?: string;
-  __spfxSpHttpClient?: SPHttpClient;
-}
-
 function getService(): RequisitionService {
-  const spfxWindow = window as unknown as ISpfxWindow;
-  const { __spfxSpHttpClient: spHttpClient, _siteUrl: siteUrl } = spfxWindow;
-  if (!spHttpClient || !siteUrl) {
-    throw new Error('SPFx context is not available on window.');
-  }
-  return new RequisitionService(spHttpClient, siteUrl);
+  return new RequisitionService();
 }
 
 export interface IModalState<T> {

@@ -11,7 +11,7 @@
   margin-bottom: 6px;
 }
 
-// Content container for the Workflow History / Attachments viewer modals.
+// Content container for the Attachments viewer modal.
 .viewerModal {
   padding: 16px;
   min-width: min(384px, calc(100vw - 32px));
@@ -21,4 +21,16 @@
   h5 {
     font-size: 1rem;
   }
+}
+
+// Content container for the Workflow History modal. Fixed 900px width to match the
+// reference (legacy) "modal-lg" implementation's .modal-content, capped for narrow viewports.
+// border-radius + overflow: hidden give the modal box itself rounded corners (Fluent UI's
+// default Modal container is only subtly rounded).
+.workflowHistoryModal {
+  padding: 16px;
+  width: min(900px, calc(100vw - 32px));
+  font-size: 0.8rem;
+  border-radius: 8px;
+  overflow: hidden;
 }

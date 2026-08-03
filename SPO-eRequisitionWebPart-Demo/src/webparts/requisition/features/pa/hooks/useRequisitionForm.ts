@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { SPHttpClient } from '@microsoft/sp-http';
 
 import { ILookupIdMaps, IRequisitionSaveHeader, RequisitionService } from '@/features/pa/services/RequisitionService';
 import { buildERequisitionNo, buildTpmNo } from '@/features/pa/utils/eRequisitionNumber';
@@ -22,7 +21,6 @@ import {
   categoryOptions,
   channelOptions,
   expenseOptions,
-  fiscalYearOptions,
   monthOptions,
   promotionOptions,
 } from '@/features/pa/constants/filterOptions';
@@ -36,16 +34,6 @@ import {
   TFormAction,
 } from '@/features/pa/types';
 
-/**
- * SPFx context published on `window` by RequisitionWebPart.render (RequisitionWebPart.ts).
- * NOTE: passing WebPartContext via React context/props would be cleaner than globals;
- * left as-is to keep this refactor scoped to RequestPA (flagged in the change summary).
- */
-interface ISpfxWindow {
-  _siteUrl?: string;
-  __spfxSpHttpClient?: SPHttpClient;
-}
-
 export interface IUseRequisitionForm {
   isLoading: boolean;
   disabledAction: boolean;
@@ -58,6 +46,7 @@ export interface IUseRequisitionForm {
   transactions: IRequisitionTransaction[];
   channel: IOption | null;
   fiscalYear: IOption | null;
+  fiscalYearOptions: IOption[];
   promotionMonth: IOption | null;
   eRequisitionNo: string;
   totalSpendingTI: number;
@@ -72,23 +61,20 @@ export interface IUseRequisitionForm {
   goBack: () => void;
 }
 
-const OPTION_SET: IRequisitionOptionSet = {
-  channelOptions,
-  fiscalYearOptions,
-  monthOptions,
-  promotionOptions,
-  categoryOptions,
-  expenseOptions,
-  majorGroupOptions: MAJOR_GROUP_OPTIONS,
-};
+function createOptionSet(fiscalYears: IOption[]): IRequisitionOptionSet {
+  return {
+    channelOptions,
+    fiscalYearOptions: fiscalYears,
+    monthOptions,
+    promotionOptions,
+    categoryOptions,
+    expenseOptions,
+    majorGroupOptions: MAJOR_GROUP_OPTIONS,
+  };
+}
 
 function getService(): RequisitionService {
-  const spfxWindow = window as unknown as ISpfxWindow;
-  const { __spfxSpHttpClient: spHttpClient, _siteUrl: siteUrl } = spfxWindow;
-  if (!spHttpClient || !siteUrl) {
-    throw new Error('SPFx context is not available on window.');
-  }
-  return new RequisitionService(spHttpClient, siteUrl);
+  return new RequisitionService();
 }
 
 /** Reads a query param from the HashRouter URL (search first, then raw hash). */
@@ -109,6 +95,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
   const [transactions, setTransactions] = React.useState<IRequisitionTransaction[]>([]);
   const [channel, setChannel] = React.useState<IOption | null>(null);
   const [fiscalYear, setFiscalYear] = React.useState<IOption | null>(null);
+  const [fiscalYearOptions, setFiscalYearOptions] = React.useState<IOption[]>([]);
   const [promotionMonth, setPromotionMonth] = React.useState<IOption | null>(null);
   const [eRequisitionNo, setERequisitionNo] = React.useState<string>('');
   const [totalSpendingTI, setTotalSpendingTI] = React.useState<number>(0);
@@ -124,13 +111,18 @@ export function useRequisitionForm(): IUseRequisitionForm {
   // Last TPMNo the existence check ran for, to avoid re-checking the same selection.
   const lastCheckedTpmNoRef = React.useRef<string>('');
 
-  const loadRequisition = async (id: string): Promise<void> => {
+  const loadRequisition = async (id: string, fiscalYears = fiscalYearOptions): Promise<void> => {
     setIsLoading(true);
     setLoadError(null);
     setNotFound(false);
     try {
-      const raw = await getService().getRequisitionRawData(id);
-      const mapped = mapRawDataToForm(id, raw, OPTION_SET);
+      const service = getService();
+      const [raw, loadedFiscalYears] = await Promise.all([
+        service.getRequisitionRawData(id),
+        fiscalYears.length > 0 ? Promise.resolve(fiscalYears) : service.getFiscalYearOptions(),
+      ]);
+      setFiscalYearOptions(loadedFiscalYears);
+      const mapped = mapRawDataToForm(id, raw, createOptionSet(loadedFiscalYears));
       // Empty result = the id does not exist or the user cannot access it (item-level
       // permissions). Surface a clear "not found" rather than a blank form.
       if (mapped.transactions.length === 0) {
@@ -160,7 +152,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
    */
   const loadMockData = (fiscalYearValue: string, fiscalMonthValue: string): void => {
     const { tpmNo, rawData } = buildMockRawData(fiscalYearValue, fiscalMonthValue);
-    const mapped = mapRawDataToForm(tpmNo, rawData, OPTION_SET);
+    const mapped = mapRawDataToForm(tpmNo, rawData, createOptionSet(fiscalYearOptions));
     setChannel(mapped.channel);
     setFiscalYear(mapped.fiscalYear);
     setPromotionMonth(mapped.promotionMonth);
@@ -183,7 +175,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
       }
       const raw = await getService().getRequisitionRawData(tpmNo);
       if (lastCheckedTpmNoRef.current !== tpmNo) return;
-      const mapped = mapRawDataToForm(tpmNo, raw, OPTION_SET);
+      const mapped = mapRawDataToForm(tpmNo, raw, createOptionSet(fiscalYearOptions));
       editingTpmNoRef.current = tpmNo; // save will replace this existing promotion
       setChannel(mapped.channel);
       setFiscalYear(mapped.fiscalYear);
@@ -226,6 +218,18 @@ export function useRequisitionForm(): IUseRequisitionForm {
     }
     setDisabledAction(false);
     setTransactions([createEmptyTransaction(1)]);
+    setIsLoading(true);
+    const loadFiscalYears = async (): Promise<void> => {
+      try {
+        setFiscalYearOptions(await getService().getFiscalYearOptions());
+      } catch (error) {
+        console.error('Error loading fiscal year options:', error);
+        setLoadError('ไม่สามารถโหลดข้อมูล Fiscal Year จาก SharePoint ได้ กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void loadFiscalYears();
   }, []);
 
   // In edit mode, keep the e-Requisition number and totals in sync with the form.
@@ -450,6 +454,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
     transactions,
     channel,
     fiscalYear,
+    fiscalYearOptions,
     promotionMonth,
     eRequisitionNo,
     totalSpendingTI,

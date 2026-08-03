@@ -2,20 +2,12 @@
 
 // Small "Clear" button shown inline next to the Channel label.
 .clearChannelButton {
-  width: 48px;
-  font-size: 0.8rem;
+  width: 40px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.7rem;
 }
 
 // Fixed width for the footer action buttons (Search / Clear).
 .actionButton {
   width: 80px;
-}
-
-// Slightly larger radios used only by the Promotion Week filter (border contrast is now
-// handled app-wide by the .requisition-app .form-check-input rule in assets/main.css).
-.promotionWeekOptions {
-  :global(.form-check-input) {
-    width: 1.15em;
-    height: 1.15em;
-  }
 }

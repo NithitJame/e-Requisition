@@ -79,6 +79,7 @@ const RequestPA: React.FC = () => {
       <RequisitionHeader
         channel={form.channel}
         fiscalYear={form.fiscalYear}
+        fiscalYearOptions={form.fiscalYearOptions}
         promotionMonth={form.promotionMonth}
         eRequisitionNo={form.eRequisitionNo}
         totalSpendingTI={form.totalSpendingTI}

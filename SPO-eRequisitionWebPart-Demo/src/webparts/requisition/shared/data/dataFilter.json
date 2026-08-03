@@ -205,44 +205,6 @@
             "label": "December"
         }
     ],
-    "Year": [
-        {
-            "value": "1819",
-            "label": "1819"
-        },
-        {
-            "value": "1920",
-            "label": "1920"
-        },
-        {
-            "value": "2021",
-            "label": "2021"
-        },
-        {
-            "value": "2122",
-            "label": "2122"
-        },
-        {
-            "value": "2223",
-            "label": "2223"
-        },
-        {
-            "value": "2324",
-            "label": "2324"
-        },
-        {
-            "value": "2425",
-            "label": "2425"
-        },
-        {
-            "value": "2526",
-            "label": "2526"
-        },
-        {
-            "value": "2627",
-            "label": "2627"
-        }
-    ],
     "WorkFlowStatus": [
         {
             "value": "Open",

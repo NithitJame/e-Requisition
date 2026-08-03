@@ -27,7 +27,6 @@ export default class RequisitionWebPart extends BaseClientSideWebPart<IRequisiti
 
     (window as any)["_siteUrl"] = siteUrl;
     (window as any)["__spfxPageContext"] = this.context.pageContext;
-    (window as any)["__spfxSpHttpClient"] = this.context.spHttpClient;
     (window as any)["__spfxMsGraphClientFactory"] = this.context.msGraphClientFactory;
 
     (window as any)["__mode"] = "local"; // local | dev | uat | production

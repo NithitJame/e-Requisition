@@ -1,21 +1,15 @@
 // Promotion Activities > Approve screen. Thin shell: delegates all state/data work to
 // useApprovePaInbox and reuses the AllPA filter form + results table, adding per-row
-// Approve/Reject/Comment controls and a batch "Submit Decision" action.
+// Approve/Reject/Comment controls and a batch "Confirm" action next to Export To Excel.
 
 import * as React from 'react';
 
 import MyDataTable from '@/shared/components/DataTable';
 import LoadingOverlay from '@/shared/components/LoadingOverlay';
 import { useApprovePaInbox } from '@/features/pa/hooks/useApprovePaInbox';
-import {
-  eRequisitionNoOptions,
-  fiscalYearOptions,
-  monthOptions,
-  workflowStatusOptions,
-} from '@/features/pa/constants/filterOptions';
+import { monthOptions, workflowStatusOptions } from '@/features/pa/constants/filterOptions';
 import AllPaFilters from '@/features/pa/components/AllPA/AllPaFilters';
 import { getApprovePaColumns } from './ApprovePA.columns';
-import styles from './ApprovePA.module.scss';
 
 const ApprovePA: React.FC = () => {
   const inbox = useApprovePaInbox();
@@ -24,12 +18,22 @@ const ApprovePA: React.FC = () => {
     () =>
       getApprovePaColumns({
         onView: inbox.view,
+        rows: inbox.rows,
         decisions: inbox.decisions,
         submitAttempted: inbox.submitAttempted,
         onDecision: inbox.setDecision,
+        onSetAllDecisions: inbox.setAllDecisions,
         onComment: inbox.setComment,
       }),
-    [inbox.view, inbox.decisions, inbox.submitAttempted, inbox.setDecision, inbox.setComment],
+    [
+      inbox.view,
+      inbox.rows,
+      inbox.decisions,
+      inbox.submitAttempted,
+      inbox.setDecision,
+      inbox.setAllDecisions,
+      inbox.setComment,
+    ],
   );
 
   const filterOptions = React.useMemo(
@@ -37,11 +41,11 @@ const ApprovePA: React.FC = () => {
       channelOptions: inbox.channelOptions,
       categoryOptions: inbox.categoryOptions,
       monthOptions,
-      yearOptions: fiscalYearOptions,
+      yearOptions: inbox.fiscalYearOptions,
       workflowStatusOptions,
-      eRequisitionNoOptions,
+      eRequisitionNoOptions: inbox.eRequisitionNoOptions,
     }),
-    [inbox.channelOptions, inbox.categoryOptions],
+    [inbox.channelOptions, inbox.categoryOptions, inbox.fiscalYearOptions, inbox.eRequisitionNoOptions],
   );
 
   return (
@@ -55,6 +59,15 @@ const ApprovePA: React.FC = () => {
         onSearch={inbox.search}
         onClear={inbox.clear}
         onExport={inbox.exportExcel}
+        extraAction={
+          <button
+            className="btn btn-outline-success rounded-xl me-2"
+            onClick={inbox.submit}
+            disabled={inbox.isSubmitting || inbox.rows.length === 0}
+          >
+            <i className="fa fa-check me-1" /> Confirm
+          </button>
+        }
       />
 
       <div className="row mt-3">
@@ -64,25 +77,11 @@ const ApprovePA: React.FC = () => {
       </div>
 
       {inbox.rows.length > 0 ? (
-        <>
-          <div className="row mt-3">
-            <div className="col-12">
-              <MyDataTable columns={columns} data={inbox.rows} isPagination />
-            </div>
+        <div className="row mt-3">
+          <div className="col-12">
+            <MyDataTable columns={columns} data={inbox.rows} isPagination />
           </div>
-
-          <div className="row mt-3">
-            <div className={`col-12 ${styles.submitBar}`}>
-              <button
-                className="btn btn-outline-success rounded-xl"
-                onClick={inbox.submit}
-                disabled={inbox.isSubmitting}
-              >
-                <i className="fa fa-check me-1" /> Submit Decision
-              </button>
-            </div>
-          </div>
-        </>
+        </div>
       ) : (
         <div className="row mt-3">
           <div className="col-12 text-center text-muted">

@@ -1,5 +1,5 @@
 // SharePoint REST access for the Approve page (Promotion Activities > Approve).
-// Components/hooks never call SPHttpClient directly (docs/CONVENTIONS.md §6); they go
+// Components/hooks never call axios directly (docs/CONVENTIONS.md §6); they go
 // through this service.
 //
 // Routing is owned by the existing (ported Nintex) workflow engine — this service only
@@ -7,7 +7,7 @@
 // transaction and appends a PA Workflow History row. The engine then moves the item to the
 // next approver / back to the requester. See CLAUDE.md §8 and constants/APPROVAL_FIELDS.
 
-import { SPHttpClient, SPHttpClientResponse, ISPHttpClientOptions } from '@microsoft/sp-http';
+import axios from 'axios';
 
 import {
   APPROVAL_ACTION,
@@ -32,6 +32,7 @@ import {
   ICurrentUser,
 } from '@/features/pa/types';
 import { fetchAllListItems } from '@/shared/utils/spItems';
+import api, { getSiteUrl } from '@/shared/services/api';
 
 const PAD_LIST = LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL;
 const HISTORY_LIST = LIST_NAMES.PA_WORKFLOW_HISTORY;
@@ -44,27 +45,21 @@ const VERBOSE_HEADERS = {
 export class ApprovalService {
   private entityTypeCache: Record<string, string> = {};
 
-  public constructor(
-    private readonly spHttpClient: SPHttpClient,
-    private readonly siteUrl: string,
-  ) {}
-
   /** The logged-in SharePoint user. */
   public async getCurrentUser(): Promise<ICurrentUser> {
-    const response = await this.spHttpClient.get(
-      `${this.siteUrl}/_api/web/currentuser?$select=Id,Title,Email,LoginName`,
-      SPHttpClient.configurations.v1,
-    );
-    if (!response.ok) {
-      throw new Error(`Failed to load current user (HTTP ${response.status}).`);
+    try {
+      const response = await api.get(`${getSiteUrl()}/_api/web/currentuser?$select=Id,Title,Email,LoginName`);
+      const user = response.data;
+      return {
+        Id: user.Id,
+        Title: user.Title ?? '',
+        Email: user.Email ?? '',
+        LoginName: user.LoginName ?? '',
+      };
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      throw new Error(`Failed to load current user (HTTP ${status ?? 'unknown'}).`);
     }
-    const user = await response.json();
-    return {
-      Id: user.Id,
-      Title: user.Title ?? '',
-      Email: user.Email ?? '',
-      LoginName: user.LoginName ?? '',
-    };
   }
 
   /**
@@ -81,7 +76,7 @@ export class ApprovalService {
     );
     const query = `$select=${select}&$expand=${PAD_EXPAND}&$top=${LIST_PAGE_SIZE}`;
 
-    const rawItems = await fetchAllListItems(this.spHttpClient, this.siteUrl, PAD_LIST, query);
+    const rawItems = await fetchAllListItems(PAD_LIST, query);
 
     const rows = rawItems
       .map((raw): IApprovalInboxRow => {
@@ -146,13 +141,14 @@ export class ApprovalService {
 
   /** Re-reads the transaction and returns true when it is still pending `currentUserId`. */
   private async isStillPending(itemId: number, currentUserId: number): Promise<boolean> {
-    const response = await this.spHttpClient.get(
-      `${this.siteUrl}/_api/web/lists/GetByTitle('${PAD_LIST}')/items(${itemId})?$select=${APPROVAL_FIELDS.PENDING_USER_ID}`,
-      SPHttpClient.configurations.v1,
-    );
-    if (!response.ok) return false;
-    const item = await response.json();
-    return item[APPROVAL_FIELDS.PENDING_USER_ID] === currentUserId;
+    try {
+      const response = await api.get(
+        `${getSiteUrl()}/_api/web/lists/GetByTitle('${PAD_LIST}')/items(${itemId})?$select=${APPROVAL_FIELDS.PENDING_USER_ID}`,
+      );
+      return response.data[APPROVAL_FIELDS.PENDING_USER_ID] === currentUserId;
+    } catch {
+      return false;
+    }
   }
 
   /** MERGE the approver Comment + decision markers onto the transaction. */
@@ -173,7 +169,7 @@ export class ApprovalService {
     // A rejection returns the transaction to the requester for correction.
     if (!isApprove) body[APPROVAL_FIELDS.SALES_REP_WAIT_FLAG] = true;
 
-    await this.mergeItem(`${this.siteUrl}/_api/web/lists/GetByTitle('${PAD_LIST}')/items(${itemId})`, body);
+    await this.mergeItem(`${getSiteUrl()}/_api/web/lists/GetByTitle('${PAD_LIST}')/items(${itemId})`, body);
   }
 
   /** Append one audit-trail row to PA Workflow History. */
@@ -192,49 +188,42 @@ export class ApprovalService {
       [WORKFLOW_HISTORY_FIELDS.ACTION]: decision,
       [WORKFLOW_HISTORY_FIELDS.COMMENT]: comment,
     };
-    await this.createItem(`${this.siteUrl}/_api/web/lists/GetByTitle('${HISTORY_LIST}')/items`, body);
+    await this.createItem(`${getSiteUrl()}/_api/web/lists/GetByTitle('${HISTORY_LIST}')/items`, body);
   }
 
   /** Resolves and caches a list's `ListItemEntityTypeFullName` (needed for create/merge). */
   private async getListItemEntityType(listName: string): Promise<string> {
     if (this.entityTypeCache[listName]) return this.entityTypeCache[listName];
-    const response = await this.spHttpClient.get(
-      `${this.siteUrl}/_api/web/lists/GetByTitle('${listName}')?$select=ListItemEntityTypeFullName`,
-      SPHttpClient.configurations.v1,
-    );
-    if (!response.ok) {
-      throw new Error(`Failed to resolve entity type for '${listName}' (HTTP ${response.status}).`);
+    try {
+      const response = await api.get(
+        `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')?$select=ListItemEntityTypeFullName`,
+      );
+      const entityType = response.data.ListItemEntityTypeFullName as string;
+      this.entityTypeCache[listName] = entityType;
+      return entityType;
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      throw new Error(`Failed to resolve entity type for '${listName}' (HTTP ${status ?? 'unknown'}).`);
     }
-    const json = await response.json();
-    const entityType = json.ListItemEntityTypeFullName as string;
-    this.entityTypeCache[listName] = entityType;
-    return entityType;
   }
 
   private async createItem(url: string, body: Record<string, unknown>): Promise<void> {
-    const options: ISPHttpClientOptions = { headers: VERBOSE_HEADERS, body: JSON.stringify(body) };
-    const response: SPHttpClientResponse = await this.spHttpClient.post(
-      url,
-      SPHttpClient.configurations.v1,
-      options,
-    );
-    if (!response.ok) {
-      throw new Error(`Create failed (HTTP ${response.status}).`);
+    try {
+      await api.post(url, body, { headers: VERBOSE_HEADERS });
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      throw new Error(`Create failed (HTTP ${status ?? 'unknown'}).`);
     }
   }
 
   private async mergeItem(url: string, body: Record<string, unknown>): Promise<void> {
-    const options: ISPHttpClientOptions = {
-      headers: { ...VERBOSE_HEADERS, 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
-      body: JSON.stringify(body),
-    };
-    const response: SPHttpClientResponse = await this.spHttpClient.post(
-      url,
-      SPHttpClient.configurations.v1,
-      options,
-    );
-    if (!response.ok) {
-      throw new Error(`Update failed (HTTP ${response.status}).`);
+    try {
+      await api.post(url, body, {
+        headers: { ...VERBOSE_HEADERS, 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' },
+      });
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      throw new Error(`Update failed (HTTP ${status ?? 'unknown'}).`);
     }
   }
 }

@@ -77,9 +77,12 @@
     margin-bottom: 0.4rem;
 }
 
-/* Bootstrap's default checkbox/radio border (#dee2e6) is too faint on a white
-   background. Darken it app-wide so every checkbox/radio stays clearly visible. */
+/* Bootstrap's default checkbox/radio border (#dee2e6) is too faint on a white background,
+   and the default size (~1em) reads small. Darken the border and bump the size app-wide so
+   every checkbox/radio stays clearly visible. */
 .requisition-app .form-check-input {
+    width: 1.15em;
+    height: 1.15em;
     border: 1.5px solid #343a40;
     opacity: 1;
 }

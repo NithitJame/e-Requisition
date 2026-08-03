@@ -12,11 +12,42 @@ import styles from './ApprovePA.module.scss';
 
 export interface IApprovePaColumnsParams {
   onView: (row: IApprovalInboxRow) => void;
+  /** The full filtered result set (all pages) — needed for the bulk Approve/Reject headers. */
+  rows: IApprovalInboxRow[];
   decisions: Record<number, IApprovalDecisionState>;
   submitAttempted: boolean;
   onDecision: (rowId: number, decision: TApprovalDecision) => void;
+  /** Bulk-applies (or clears, if every row already has it) a decision to every row in `rows`. */
+  onSetAllDecisions: (decision: TApprovalDecision) => void;
   onComment: (rowId: number, comment: string) => void;
 }
+
+/**
+ * "Approve"/"Reject" column header: the label plus a checkbox that bulk-applies (or clears)
+ * that decision for every row in the current filtered result set — all pages, not just the
+ * one currently visible. Checked reflects whether every row already has this decision.
+ */
+const BulkDecisionHeader: React.FC<{
+  label: string;
+  decision: TApprovalDecision;
+  rows: IApprovalInboxRow[];
+  decisions: Record<number, IApprovalDecisionState>;
+  onSetAllDecisions: (decision: TApprovalDecision) => void;
+}> = ({ label, decision, rows, decisions, onSetAllDecisions }) => {
+  const allSelected = rows.length > 0 && rows.every((row) => decisions[row.Id]?.decision === decision);
+  return (
+    <div className="d-flex align-items-center gap-1">
+      <input
+        type="checkbox"
+        className="form-check-input"
+        aria-label={`${label} all`}
+        checked={allSelected}
+        onChange={() => onSetAllDecisions(decision)}
+      />
+      <span>{label}</span>
+    </div>
+  );
+};
 
 /**
  * Comment input with its own local state so typing stays smooth (the parent rebuilds columns
@@ -54,11 +85,19 @@ const CommentInput: React.FC<{
 
 /** Builds the Approve table columns: shared business columns + approval controls. */
 export function getApprovePaColumns(params: IApprovePaColumnsParams): TableColumn<IApprovalInboxRow>[] {
-  const { onView, decisions, submitAttempted, onDecision, onComment } = params;
+  const { onView, rows, decisions, submitAttempted, onDecision, onSetAllDecisions, onComment } = params;
 
   const decisionColumns: TableColumn<IApprovalInboxRow>[] = [
     {
-      name: 'Approve',
+      name: (
+        <BulkDecisionHeader
+          label="Approve"
+          decision="Approve"
+          rows={rows}
+          decisions={decisions}
+          onSetAllDecisions={onSetAllDecisions}
+        />
+      ),
       cell: (row) => (
         <input
           type="radio"
@@ -75,7 +114,15 @@ export function getApprovePaColumns(params: IApprovePaColumnsParams): TableColum
       width: '90px',
     },
     {
-      name: 'Reject',
+      name: (
+        <BulkDecisionHeader
+          label="Reject"
+          decision="Reject"
+          rows={rows}
+          decisions={decisions}
+          onSetAllDecisions={onSetAllDecisions}
+        />
+      ),
       cell: (row) => (
         <input
           type="radio"
@@ -108,16 +155,26 @@ export function getApprovePaColumns(params: IApprovePaColumnsParams): TableColum
     },
   ];
 
-  // Insert the approval controls immediately AFTER the Status column (found by name so it
-  // survives changes to the shared column list), rather than appending them at the far right.
-  // The columns array drives both header and cells, so headers stay aligned automatically.
+  // Column order: View, Approve, Reject, Comment, Status, then the rest of the shared
+  // business columns. "Status" is pulled out of its default position (found by name so it
+  // survives changes to the shared column list) and re-inserted right after Comment instead
+  // of appending everything at the far right. The columns array drives both header and
+  // cells, so headers stay aligned automatically.
   const businessColumns = getAllPaColumns<IApprovalInboxRow>(onView);
   const statusIndex = businessColumns.findIndex((column) => column.name === 'Status');
-  const insertAt = statusIndex >= 0 ? statusIndex + 1 : businessColumns.length;
+  const statusColumn = statusIndex >= 0 ? businessColumns[statusIndex] : null;
+  const columnsWithoutStatus =
+    statusIndex >= 0
+      ? [...businessColumns.slice(0, statusIndex), ...businessColumns.slice(statusIndex + 1)]
+      : businessColumns;
+
+  // View is always the first column; insert [Approve, Reject, Comment, Status] right after it.
+  const insertAt = 1;
+  const afterView = statusColumn ? [...decisionColumns, statusColumn] : decisionColumns;
 
   return [
-    ...businessColumns.slice(0, insertAt),
-    ...decisionColumns,
-    ...businessColumns.slice(insertAt),
+    ...columnsWithoutStatus.slice(0, insertAt),
+    ...afterView,
+    ...columnsWithoutStatus.slice(insertAt),
   ];
 }

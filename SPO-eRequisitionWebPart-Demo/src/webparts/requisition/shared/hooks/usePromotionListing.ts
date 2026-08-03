@@ -3,14 +3,15 @@
 // by list-set config + the View route prefix so each request type reuses one implementation.
 
 import * as React from 'react';
-import { SPHttpClient } from '@microsoft/sp-http';
 
 import {
   IPromotionListingConfig,
+  IPromotionListingServerFilters,
   PromotionListingService,
 } from '@/shared/services/PromotionListingService';
-import { filterPromotionActivities } from '@/shared/utils/promotionListingFilter';
+import { buildERequisitionNoOptions, filterPromotionActivities } from '@/shared/utils/promotionListingFilter';
 import { exportRowsToCsv, IExportColumn } from '@/shared/utils/exportCsv';
+import { multiSelectSummary, singleSelectSummary } from '@/shared/utils/filterSummary';
 import { FISCAL_MONTH_OPTIONS } from '@/shared/constants/promotionListing';
 import { IAllPaFilterState, IOption, IPromotionActivityRow } from '@/shared/types';
 
@@ -23,16 +24,40 @@ const FISCAL_ORDINAL_BY_MONTH: Record<string, number> = FISCAL_MONTH_OPTIONS.red
   {} as Record<string, number>,
 );
 
+/** Fiscal ordinal -> calendar month label (the reverse of FISCAL_ORDINAL_BY_MONTH). */
+const MONTH_LABEL_BY_FISCAL_ORDINAL: Record<number, string> = FISCAL_MONTH_OPTIONS.reduce(
+  (acc, option) => {
+    acc[Number(option.value)] = option.label;
+    return acc;
+  },
+  {} as Record<number, string>,
+);
+
 /** Fiscal ordinal for a selected month option (by label first, then value). */
 function monthOrdinal(option: IOption | null): number | undefined {
   if (!option) return undefined;
   return FISCAL_ORDINAL_BY_MONTH[option.label] ?? FISCAL_ORDINAL_BY_MONTH[String(option.value)];
 }
 
+/** Calendar month names for every fiscal ordinal in `[from, to]` (inclusive). */
+function monthsInFiscalRange(from: number, to: number): string[] {
+  const months: string[] = [];
+  for (let ordinal = from; ordinal <= to; ordinal++) {
+    const label = MONTH_LABEL_BY_FISCAL_ORDINAL[ordinal];
+    if (label) months.push(label);
+  }
+  return months;
+}
+
+/** True when every currently-loaded option is selected (or none are) — i.e. "no constraint". */
+function isEverythingSelected(selected: IOption[] | null, allOptions: IOption[]): boolean {
+  if (!selected || selected.length === 0) return true;
+  return allOptions.length > 0 && selected.length === allOptions.length;
+}
+
 /** SPFx context published on `window` by RequisitionWebPart.render. */
 interface ISpfxWindow {
   _siteUrl?: string;
-  __spfxSpHttpClient?: SPHttpClient;
   __mode?: string;
 }
 
@@ -67,6 +92,8 @@ export interface IUsePromotionListing {
   filters: IAllPaFilterState;
   channelOptions: IOption[];
   categoryOptions: IOption[];
+  fiscalYearOptions: IOption[];
+  eRequisitionNoOptions: IOption[];
   rows: IPromotionActivityRow[];
   setFilter: <K extends keyof IAllPaFilterState>(key: K, value: IAllPaFilterState[K]) => void;
   /** Always pulls fresh data from SharePoint before filtering (there is no separate Refresh). */
@@ -76,18 +103,10 @@ export interface IUsePromotionListing {
   exportExcel: () => void;
 }
 
-function getSpfxContext(): { spHttpClient: SPHttpClient; siteUrl: string } {
-  const spfxWindow = window as unknown as ISpfxWindow;
-  const { __spfxSpHttpClient: spHttpClient, _siteUrl: siteUrl } = spfxWindow;
-  if (!spHttpClient || !siteUrl) {
-    throw new Error('SPFx context is not available on window.');
-  }
-  return { spHttpClient, siteUrl };
-}
-
 /** Numeric (raw, unformatted) export columns — the table's business columns minus View. */
 const EXPORT_COLUMNS: IExportColumn<IPromotionActivityRow>[] = [
   { header: 'Status', value: (r) => r.WorkflowStatus?.LookupValue ?? '' },
+  { header: 'Category', value: (r) => r.Category.map((c) => c.LookupValue).join(', ') },
   { header: 'E-Requisition No.', value: (r) => r.TPMNo },
   { header: 'Transaction', value: (r) => r.Transaction },
   { header: 'Channel', value: (r) => r.CustomerSubGroup?.LookupValue ?? '' },
@@ -109,6 +128,8 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   const [filters, setFilters] = React.useState<IAllPaFilterState>(EMPTY_FILTERS);
   const [channelOptions, setChannelOptions] = React.useState<IOption[]>([]);
   const [categoryOptions, setCategoryOptions] = React.useState<IOption[]>([]);
+  const [fiscalYearOptions, setFiscalYearOptions] = React.useState<IOption[]>([]);
+  const [eRequisitionNoOptions, setERequisitionNoOptions] = React.useState<IOption[]>([]);
   const [rows, setRows] = React.useState<IPromotionActivityRow[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -119,8 +140,7 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   const defaultFiltersAppliedRef = React.useRef<boolean>(false);
 
   const getService = React.useCallback((): PromotionListingService => {
-    const { spHttpClient, siteUrl } = getSpfxContext();
-    return new PromotionListingService(spHttpClient, siteUrl, {
+    return new PromotionListingService({
       detailListName: config.detailListName,
       baseSelect: config.baseSelect,
       channelListName: config.channelListName,
@@ -148,11 +168,11 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   );
 
   const loadData = React.useCallback(
-    (forceRefresh = false): Promise<IPromotionActivityRow[]> => {
+    (forceRefresh = false, serverFilters?: IPromotionListingServerFilters): Promise<IPromotionActivityRow[]> => {
       if (forceRefresh) dataPromiseRef.current = null;
       if (!dataPromiseRef.current) {
         dataPromiseRef.current = getService()
-          .getAllDetails()
+          .getAllDetails(serverFilters)
           .catch((err) => {
             dataPromiseRef.current = null;
             throw err;
@@ -166,9 +186,10 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   React.useEffect(() => {
     getService()
       .getFilterOptions()
-      .then(({ channels, categories }) => {
+      .then(({ channels, categories, fiscalYears }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
+        setFiscalYearOptions(fiscalYears);
         if (!defaultFiltersAppliedRef.current) {
           defaultFiltersAppliedRef.current = true;
           setFilters((prev) => ({
@@ -180,7 +201,9 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
       })
       .catch((err) => console.error('[usePromotionListing] failed to load filter options.', err));
 
-    loadData().catch((err) => console.error('[usePromotionListing] cache warm-up failed.', err));
+    loadData()
+      .then((data) => setERequisitionNoOptions(buildERequisitionNoOptions(data)))
+      .catch((err) => console.error('[usePromotionListing] cache warm-up failed.', err));
   }, [getService, loadData]);
 
   const setFilter = React.useCallback(
@@ -189,6 +212,34 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     },
     [],
   );
+
+  /**
+   * Translates the current selection into a server-side `$filter` (see
+   * PromotionListingService.getAllDetails for how each field turns into OData). Channel/Category
+   * are omitted when every currently-loaded option is selected — the common default state — so
+   * the query doesn't grow a long OR clause for "no constraint".
+   */
+  const buildServerFilters = React.useCallback((): IPromotionListingServerFilters => {
+    const monthFromOrdinal = monthOrdinal(filters.monthFrom);
+    const monthToOrdinal = monthOrdinal(filters.monthTo);
+    const hasMonthRange = monthFromOrdinal !== undefined || monthToOrdinal !== undefined;
+
+    return {
+      channel: isEverythingSelected(filters.channel, channelOptions)
+        ? undefined
+        : (filters.channel ?? []).map((option) => option.label),
+      category: isEverythingSelected(filters.category, categoryOptions)
+        ? undefined
+        : (filters.category ?? []).map((option) => option.label),
+      fiscalYear: filters.fiscalYear ? String(filters.fiscalYear.value) : undefined,
+      workflowStatus: filters.workflowStatus ? String(filters.workflowStatus.value) : undefined,
+      eRequisitionNo: filters.eRequisitionNo ? String(filters.eRequisitionNo.value) : undefined,
+      expectedToClose: filters.expectedToClose ? String(filters.expectedToClose.value) : undefined,
+      promotionMonths: hasMonthRange ? monthsInFiscalRange(monthFromOrdinal ?? 1, monthToOrdinal ?? 12) : undefined,
+      promotionWeek:
+        filters.promotionWeek === 'W1-2' || filters.promotionWeek === 'W3-4' ? filters.promotionWeek : undefined,
+    };
+  }, [filters, channelOptions, categoryOptions]);
 
   const search = React.useCallback(async (): Promise<void> => {
     // Month-range validation: Promotion Month From must not be later than To (fiscal order).
@@ -206,8 +257,12 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     setHasSearched(true);
     try {
       // There is no separate Refresh action, so Search always pulls fresh data from
-      // SharePoint (bypasses the warm-up cache) before filtering.
-      const data = await loadData(true);
+      // SharePoint (bypasses the warm-up cache) before filtering. Every filter that can be
+      // expressed as a server-side $filter is pushed to SharePoint first, so a narrow search
+      // doesn't have to page through the entire list; filterPromotionActivities is still
+      // applied afterward as the source of truth regardless of what the server returned.
+      const data = await loadData(true, buildServerFilters());
+      setERequisitionNoOptions(buildERequisitionNoOptions(data));
       setRows(filterPromotionActivities(data, filters));
     } catch (err) {
       console.error('[usePromotionListing] search failed.', err);
@@ -216,7 +271,7 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     } finally {
       setIsLoading(false);
     }
-  }, [filters, loadData]);
+  }, [filters, loadData, buildServerFilters]);
 
   const clear = React.useCallback((): void => {
     // Bottom "Clear" resets every filter EXCEPT Channel/Category (both default to "all
@@ -235,8 +290,19 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   );
 
   const exportExcel = React.useCallback((): void => {
-    exportRowsToCsv(config.exportFileName, EXPORT_COLUMNS, rows);
-  }, [config.exportFileName, rows]);
+    const summaryBlock: Array<[string, string]> = [
+      ['Channel', multiSelectSummary(filters.channel, channelOptions)],
+      ['Category', multiSelectSummary(filters.category, categoryOptions)],
+      ['Fiscal Year', singleSelectSummary(filters.fiscalYear)],
+      ['Promotion Month From', singleSelectSummary(filters.monthFrom)],
+      ['Promotion Month To', singleSelectSummary(filters.monthTo)],
+      ['Status', singleSelectSummary(filters.workflowStatus)],
+      ['E-Requisition No.', singleSelectSummary(filters.eRequisitionNo)],
+      ['Expected to Close', singleSelectSummary(filters.expectedToClose)],
+      ['Promotion Week', filters.promotionWeek ?? 'All'],
+    ];
+    exportRowsToCsv(config.exportFileName, EXPORT_COLUMNS, rows, summaryBlock);
+  }, [config.exportFileName, rows, filters, channelOptions, categoryOptions]);
 
   return {
     isLoading,
@@ -245,6 +311,8 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     filters,
     channelOptions,
     categoryOptions,
+    fiscalYearOptions,
+    eRequisitionNoOptions,
     rows,
     setFilter,
     search,

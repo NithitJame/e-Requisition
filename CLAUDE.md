@@ -193,13 +193,19 @@ export default [
 3. **แต่ละ feature ใช้โฟลเดอร์ `services/` (หลายไฟล์) แทน `services.ts` ไฟล์เดียว** — เพื่อเลี่ยงไฟล์ยักษ์
    ตามหลัก no-spaghetti (เช่น `features/pa/services/` มีทั้ง `RequisitionService.ts` และ
    `PromotionActivityService.ts`)
-4. **ไม่มี `shared/services/api.ts` (axios)** — SPFx เข้าถึง SharePoint ผ่าน `SPHttpClient` จาก browser
-   session (publish ไว้บน `window`) ไม่ได้ใช้ axios; การเรียก API ทั้งหมดอยู่ใน `features/<x>/services/`
-5. **Build/Package manager/Node/Styling ตามข้อยกเว้น SPFx ในข้อ 1** — ใช้ Heft (ไม่ใช่ Vite), npm
+4. **Build/Package manager/Node/Styling ตามข้อยกเว้น SPFx ในข้อ 1** — ใช้ Heft (ไม่ใช่ Vite), npm
    (ไม่ใช่ pnpm), Node ตามที่ SPFx 1.23 รองรับ, SCSS Modules (ไม่ใช่ Tailwind)
-6. **`eslint-plugin-boundaries` ปักเวอร์ชัน `^4`** (ไม่ใช่ล่าสุด v7) — เพราะ v6/v7 เปลี่ยน DSL
+5. **`eslint-plugin-boundaries` ปักเวอร์ชัน `^4`** (ไม่ใช่ล่าสุด v7) — เพราะ v6/v7 เปลี่ยน DSL
    (`element-types`→`dependencies`, `rules`→`policies`, `${}`→`{{}}`) จนไม่ตรงกับ config ตัวอย่างในข้อ 7
    เพิ่ม `eslint-import-resolver-typescript` เพื่อให้ boundaries resolve `@/` alias ได้
+
+> **อัปเดต 2026-08-03 (อนุมัติโดยเจ้าของงาน):** ข้อยกเว้น "ไม่มี `shared/services/api.ts`" ถูกยกเลิก
+> โปรเจกต์นี้ย้ายจาก `SPHttpClient` มาใช้ **axios** เป็น client เดียวสำหรับเรียก SharePoint REST ทั้งหมด
+> ตามมาตรฐานกลางข้อ 1/3 แล้ว (`src/webparts/requisition/shared/services/api.ts` — axios instance เดียว,
+> `withCredentials: true` อ่าน session cookie ของ SharePoint, มี request interceptor ดึง/แคช
+> `X-RequestDigest` จาก `/_api/contextinfo` ให้อัตโนมัติสำหรับ request ที่ไม่ใช่ GET เพราะ axios ไม่มีกลไก
+> anti-CSRF ในตัวแบบ `SPHttpClient`) โปรเจกต์นี้จึงไม่มีข้อยกเว้นในส่วนนี้อีกต่อไป — ทุก service
+> เรียกผ่าน `api.ts` ไฟล์เดียวตามมาตรฐาน
 
 ---
 

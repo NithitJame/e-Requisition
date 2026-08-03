@@ -1,7 +1,7 @@
 // All SharePoint REST access for the e-Requisition web part lives here.
-// Components/hooks never call SPHttpClient directly (see docs/CONVENTIONS.md §6).
+// Components/hooks never call axios directly (see docs/CONVENTIONS.md §6).
 
-import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
+import axios from 'axios';
 
 import {
   EXPENSE_TYPE_ID,
@@ -11,6 +11,8 @@ import {
   WORKFLOW_HISTORY_FIELDS,
 } from '@/features/pa/constants';
 import { sumCommittedByType } from '@/features/pa/utils/totals';
+import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
+import api, { getSiteUrl } from '@/shared/services/api';
 import {
   IAttachmentFile,
   IOption,
@@ -64,32 +66,22 @@ const SELECT_EXPAND = {
   CBU: '$select=Title,TPMNo,Allocation,MajorGroupName/Description&$expand=MajorGroupName',
 };
 
-const WRITE_HEADERS = {
-  Accept: 'application/json;odata=nometadata',
-  'Content-Type': 'application/json;odata=nometadata',
-  'odata-version': '',
-};
-
 export class RequisitionService {
-  public constructor(
-    private readonly spHttpClient: SPHttpClient,
-    private readonly siteUrl: string,
-  ) {}
-
   /** Fetches every item across pages; ok=false if any request fails (e.g. list view threshold). */
   private async fetchAllPaged(url: string): Promise<IPagedResult> {
     let items: ISharePointItem[] = [];
     let nextUrl: string | undefined = url;
 
     while (nextUrl) {
-      const response: SPHttpClientResponse = await this.spHttpClient.get(
-        nextUrl,
-        SPHttpClient.configurations.v1,
-      );
-      if (!response.ok) return { ok: false, items: [] };
-      const json = await response.json();
-      if (json.value) items = [...items, ...json.value];
-      nextUrl = json['@odata.nextLink'];
+      let data: { value?: ISharePointItem[]; '@odata.nextLink'?: string; 'odata.nextLink'?: string };
+      try {
+        const response = await api.get(nextUrl);
+        data = response.data;
+      } catch {
+        return { ok: false, items: [] };
+      }
+      if (data.value) items = [...items, ...data.value];
+      nextUrl = data['@odata.nextLink'] ?? data['odata.nextLink'];
     }
 
     return { ok: true, items };
@@ -104,7 +96,7 @@ export class RequisitionService {
     tpmNo: string,
     selectExpand: string,
   ): Promise<ISharePointItem[]> {
-    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${listName}')/items`;
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/items`;
     const filtered = await this.fetchAllPaged(
       `${base}?$filter=TPMNo eq '${tpmNo}'&${selectExpand}&$top=${LIST_PAGE_SIZE}`,
     );
@@ -116,7 +108,7 @@ export class RequisitionService {
 
   /** Builds a map of MajorGroupName (Description) -> Category from M_MajorGroupName. */
   private async loadMajorGroupCategoryMap(): Promise<Record<string, string>> {
-    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${LIST_NAMES.MAJOR_GROUP_NAME}')/items`;
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${LIST_NAMES.MAJOR_GROUP_NAME}')/items`;
 
     const readCategory = (item: ISharePointItem): string => {
       let raw: unknown = item.SubBrand_x003a_Category;
@@ -183,7 +175,7 @@ export class RequisitionService {
    * (Ref_x0020_No is not indexed). Sorted oldest-first.
    */
   public async getWorkflowHistory(refNo: string): Promise<IWorkflowHistoryEntry[]> {
-    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${LIST_NAMES.PA_WORKFLOW_HISTORY}')/items`;
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${LIST_NAMES.PA_WORKFLOW_HISTORY}')/items`;
     const select =
       `$select=${WORKFLOW_HISTORY_FIELDS.REF_NO},${WORKFLOW_HISTORY_FIELDS.USER_DISPLAY_NAME},` +
       `${WORKFLOW_HISTORY_FIELDS.ACTION},${WORKFLOW_HISTORY_FIELDS.COMMENT},Created,Author/Title&$expand=Author`;
@@ -218,7 +210,7 @@ export class RequisitionService {
    * Ref No / Title). Tries a server-side $filter first, then fetch-all + client filter.
    */
   public async getTransactionAttachments(refNo: string): Promise<IAttachmentFile[]> {
-    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${LIST_NAMES.PA_DOCUMENTS}')/items`;
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${LIST_NAMES.PA_DOCUMENTS}')/items`;
     const select = '$select=FileLeafRef,FileRef,Title,TPMNo';
 
     const encodedRef = refNo.replace(/'/g, "''");
@@ -233,7 +225,7 @@ export class RequisitionService {
       items = all.items.filter((row) => String(row.Title ?? '') === refNo);
     }
 
-    const origin = new URL(this.siteUrl).origin;
+    const origin = new URL(getSiteUrl()).origin;
     return items
       .filter((item) => item.FileRef)
       .map((item): IAttachmentFile => {
@@ -270,20 +262,19 @@ export class RequisitionService {
   }
 
   private async deleteItemById(listName: string, id: number): Promise<void> {
-    const url = `${this.siteUrl}/_api/web/lists/getbytitle('${listName}')/items(${id})`;
-    const response = await this.spHttpClient.post(url, SPHttpClient.configurations.v1, {
-      headers: { ...WRITE_HEADERS, 'IF-MATCH': '*', 'X-HTTP-Method': 'DELETE' },
-    });
-    if (response.ok) return;
-    const detail = await response.text().catch(() => '');
-    throw new Error(
-      `ลบรายการ "${listName}" (id ${id}) ไม่สำเร็จ (HTTP ${response.status} ${response.statusText}). ${detail}`,
-    );
+    const url = `${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items(${id})`;
+    try {
+      await api.post(url, null, { headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'DELETE' } });
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
+      throw new Error(`ลบรายการ "${listName}" (id ${id}) ไม่สำเร็จ (HTTP ${status ?? 'unknown'}). ${detail}`);
+    }
   }
 
   /** Builds a Description -> Id map for one master list (small lists; no threshold risk). */
   private async loadDescriptionIdMap(listName: string): Promise<Record<string, number>> {
-    const base = `${this.siteUrl}/_api/web/lists/GetByTitle('${listName}')/items`;
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/items`;
     const result = await this.fetchAllPaged(`${base}?$select=Id,Description&$top=${LIST_PAGE_SIZE}`);
     const map: Record<string, number> = {};
     for (const item of result.items) {
@@ -309,18 +300,18 @@ export class RequisitionService {
     return { customerSubGroup, promotionMonth, promotionType, category, accountName, majorGroupName };
   }
 
+  public getFiscalYearOptions(): Promise<IOption[]> {
+    return fetchFiscalYearOptions();
+  }
+
   /** Resolves a lookup option's display value to its master-list item id, or undefined. */
   private resolveId(map: Record<string, number>, value: string | number | undefined): number | undefined {
     if (value === undefined || value === null || value === '') return undefined;
     return map[String(value)];
   }
 
-  private postItem(listName: string, body: object): Promise<SPHttpClientResponse> {
-    return this.spHttpClient.post(
-      `${this.siteUrl}/_api/web/lists/getbytitle('${listName}')/items`,
-      SPHttpClient.configurations.v1,
-      { headers: WRITE_HEADERS, body: JSON.stringify(body) },
-    );
+  private postItem(listName: string, body: object): Promise<unknown> {
+    return api.post(`${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`, body);
   }
 
   private createDetailItem(
@@ -399,12 +390,13 @@ export class RequisitionService {
 
   /** POSTs one item and throws a detailed error on failure (never swallow write errors). */
   private async createItem(listName: string, body: object): Promise<void> {
-    const response = await this.postItem(listName, body);
-    if (response.ok) return;
-    const detail = await response.text().catch(() => '');
-    throw new Error(
-      `บันทึกลงรายการ "${listName}" ไม่สำเร็จ (HTTP ${response.status} ${response.statusText}). ${detail}`,
-    );
+    try {
+      await this.postItem(listName, body);
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
+      throw new Error(`บันทึกลงรายการ "${listName}" ไม่สำเร็จ (HTTP ${status ?? 'unknown'}). ${detail}`);
+    }
   }
 
   /** Reads an option's display value (used as the key into a lookup id map). */

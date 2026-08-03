@@ -6,12 +6,7 @@ import * as React from 'react';
 import MyDataTable from '@/shared/components/DataTable';
 import LoadingOverlay from '@/shared/components/LoadingOverlay';
 import { useAllPaSearch } from '@/features/pa/hooks/useAllPaSearch';
-import {
-  eRequisitionNoOptions,
-  fiscalYearOptions,
-  monthOptions,
-  workflowStatusOptions,
-} from '@/features/pa/constants/filterOptions';
+import { monthOptions, workflowStatusOptions } from '@/features/pa/constants/filterOptions';
 import AllPaFilters from './AllPaFilters';
 import { getAllPaColumns } from './AllPA.columns';
 
@@ -25,11 +20,11 @@ const AllPA: React.FC = () => {
       channelOptions: search.channelOptions,
       categoryOptions: search.categoryOptions,
       monthOptions,
-      yearOptions: fiscalYearOptions,
+      yearOptions: search.fiscalYearOptions,
       workflowStatusOptions,
-      eRequisitionNoOptions,
+      eRequisitionNoOptions: search.eRequisitionNoOptions,
     }),
-    [search.channelOptions, search.categoryOptions],
+    [search.channelOptions, search.categoryOptions, search.fiscalYearOptions, search.eRequisitionNoOptions],
   );
 
   return (
@@ -42,6 +37,7 @@ const AllPA: React.FC = () => {
         onChange={search.setFilter}
         onSearch={search.search}
         onClear={search.clear}
+        onExport={search.exportExcel}
       />
 
       <div className="row mt-3">
