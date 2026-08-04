@@ -11,8 +11,25 @@ import {
   mapRawPadToRow,
 } from '@/shared/utils/promotionListingMapper';
 import { fetchAllListItems } from '@/shared/utils/spItems';
-import { IOption, IPromotionActivityRow } from '@/shared/types';
+import api, { getSiteUrl } from '@/shared/services/api';
+import { IOption, IPromotionActivityRow, ISharePointItem } from '@/shared/types';
 import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
+
+/**
+ * Id-range width for a filtered chunk. `Id` is always indexed, so bounding a query to
+ * `Id ge x and Id le y` lets SharePoint narrow the scan to this range before evaluating the
+ * rest of the (possibly unindexed / lookup-field) filter — comfortably under the 5,000-item
+ * list-view threshold, regardless of what the rest of the filter touches.
+ */
+const ID_CHUNK_SIZE = 4500;
+
+/** Cheaply reads the highest `Id` currently in the list (single row, ordered by the Id index). */
+async function getMaxItemId(listName: string): Promise<number> {
+  const url = `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/items?$select=Id&$top=1&$orderby=Id desc`;
+  const response = await api.get<{ value?: Array<{ Id?: number }> }>(url);
+  const maxId = response.data.value?.[0]?.Id;
+  return typeof maxId === 'number' ? maxId : 0;
+}
 
 /** List-set configuration that adapts the service to a request type (PA vs TA). */
 export interface IPromotionListingConfig {
@@ -98,10 +115,11 @@ export class PromotionListingService {
   /**
    * Loads Detail rows for the configured list and normalises them for the listing table.
    * These lists exceed 5,000 items and only `Modified` is indexed, so a server-side `$filter`
-   * built from unindexed columns can throw a list-view-threshold error — when `serverFilters`
-   * produces a non-empty clause, this tries the filtered query first and falls back to the full
-   * unfiltered page-all fetch (client-side filtering then narrows it, same as before) if that
-   * throws.
+   * built from unindexed columns can throw a list-view-threshold error if evaluated over the
+   * whole list at once — when `serverFilters` produces a non-empty clause, this instead runs it
+   * in `Id`-bounded chunks (see fetchFilteredByIdChunks) so each request scans a bounded slice,
+   * and falls back to the full unfiltered page-all fetch (client-side filtering then narrows it,
+   * same as before) if that still throws for any reason.
    */
   public async getAllDetails(serverFilters?: IPromotionListingServerFilters): Promise<IPromotionActivityRow[]> {
     const selectExpandTop = `$select=${[...this.config.baseSelect, ...PAD_LOOKUP_SELECT].join(
@@ -109,10 +127,10 @@ export class PromotionListingService {
     )}&$expand=${PAD_EXPAND}&$top=${LIST_PAGE_SIZE}`;
     const filterClause = serverFilters ? buildODataFilter(serverFilters) : '';
 
-    let rawItems;
+    let rawItems: ISharePointItem[];
     if (filterClause) {
       try {
-        rawItems = await fetchAllListItems(this.config.detailListName, `${selectExpandTop}&$filter=${filterClause}`);
+        rawItems = await this.fetchFilteredByIdChunks(selectExpandTop, filterClause);
       } catch {
         rawItems = await fetchAllListItems(this.config.detailListName, selectExpandTop);
       }
@@ -122,6 +140,26 @@ export class PromotionListingService {
 
     const rows = rawItems.map((raw) => mapRawPadToRow(raw as unknown as IRawPadItem));
     return rows.sort(comparePromotionActivities);
+  }
+
+  /**
+   * Runs a `$filter` in sequential `Id`-range chunks instead of over the whole list at once, so
+   * each request's scan is bounded by an indexed column regardless of what the rest of the
+   * filter touches (lookup fields included). Requests run one at a time (not in parallel) to
+   * avoid piling many large queries onto SharePoint at once.
+   */
+  private async fetchFilteredByIdChunks(selectExpandTop: string, filterClause: string): Promise<ISharePointItem[]> {
+    const maxId = await getMaxItemId(this.config.detailListName);
+    if (maxId <= 0) return [];
+
+    const items: ISharePointItem[] = [];
+    for (let start = 1; start <= maxId; start += ID_CHUNK_SIZE) {
+      const end = Math.min(start + ID_CHUNK_SIZE - 1, maxId);
+      const chunkFilter = `(Id ge ${start} and Id le ${end}) and (${filterClause})`;
+      const chunkItems = await fetchAllListItems(this.config.detailListName, `${selectExpandTop}&$filter=${chunkFilter}`);
+      items.push(...chunkItems);
+    }
+    return items;
   }
 
   /** Maps a master-list to de-duplicated, label-sorted `IOption`s. */
