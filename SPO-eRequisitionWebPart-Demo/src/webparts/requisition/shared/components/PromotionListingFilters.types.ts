@@ -28,4 +28,6 @@ export interface IPromotionListingFiltersProps {
   showChannelClear?: boolean;
   /** Shows the Category filter. Defaults to true (AllTA hides it per its SRS filter list). */
   showCategory?: boolean;
+  /** Shown inline under Promotion Month To as soon as From/To form an invalid range. */
+  monthRangeError?: string | null;
 }

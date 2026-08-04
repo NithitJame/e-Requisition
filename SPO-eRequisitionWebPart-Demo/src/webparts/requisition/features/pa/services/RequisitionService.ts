@@ -237,6 +237,72 @@ export class RequisitionService {
       });
   }
 
+  /**
+   * Uploads one file to the PA Documents library and tags it with the transaction's Ref No
+   * (the `Title` field getTransactionAttachments matches on). The upload itself is a plain
+   * `Files/add`; tagging is a second, best-effort MERGE — if it fails the file is still on
+   * SharePoint, it just won't show up under this Ref No until re-tagged.
+   */
+  private async uploadOneAttachment(refNo: string, file: File): Promise<void> {
+    const listName = LIST_NAMES.PA_DOCUMENTS;
+    const safeFileName = file.name.replace(/'/g, "''");
+    const addUrl =
+      `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/RootFolder/Files/` +
+      `add(url='${safeFileName}',overwrite=true)`;
+
+    let serverRelativeUrl: string | undefined;
+    try {
+      const fileBuffer = await file.arrayBuffer();
+      const response = await api.post<{ ServerRelativeUrl?: string }>(addUrl, fileBuffer, {
+        headers: { 'Content-Type': 'application/octet-stream' },
+      });
+      serverRelativeUrl = response.data.ServerRelativeUrl;
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      throw new Error(`อัปโหลดไฟล์ "${file.name}" ไม่สำเร็จ (HTTP ${status ?? 'unknown'}).`);
+    }
+
+    if (!serverRelativeUrl) return;
+
+    try {
+      const safeServerRelativeUrl = serverRelativeUrl.replace(/'/g, "''");
+      const itemResponse = await api.get<{ Id?: number }>(
+        `${getSiteUrl()}/_api/web/GetFileByServerRelativeUrl('${safeServerRelativeUrl}')/ListItemAllFields?$select=Id`,
+      );
+      const itemId = itemResponse.data.Id;
+      if (!itemId) return;
+
+      await api.post(
+        `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/items(${itemId})`,
+        { Title: refNo },
+        { headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' } },
+      );
+    } catch {
+      // Non-fatal — see doc comment above.
+    }
+  }
+
+  /** Uploads each file to PA Documents, tagging it with the transaction's Ref No. Per-file
+   * failures are collected rather than aborting the rest of the batch. */
+  public async uploadAttachments(
+    refNo: string,
+    files: File[],
+  ): Promise<{ succeeded: string[]; failed: Array<{ name: string; message: string }> }> {
+    const succeeded: string[] = [];
+    const failed: Array<{ name: string; message: string }> = [];
+
+    for (const file of files) {
+      try {
+        await this.uploadOneAttachment(refNo, file);
+        succeeded.push(file.name);
+      } catch (error) {
+        failed.push({ name: file.name, message: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
+    return { succeeded, failed };
+  }
+
   /** True if a Promotion Activities Detail item already exists for this TPM number. */
   public async promotionExists(tpmNo: string): Promise<boolean> {
     const items = await this.getItemsByTPMNo(

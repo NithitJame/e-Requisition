@@ -51,6 +51,18 @@ function monthOrdinal(option: IOption | null): number | undefined {
 }
 
 /**
+ * Field-level validation message for Promotion Month From/To, or null when the pair is fine.
+ * "From" must not fall later than "To" in fiscal order (September = 1 ... August = 12) —
+ * e.g. From = May (9) / To = January (5) is invalid since May comes after January in the
+ * same fiscal year. Either field left blank means "no constraint" on that side.
+ */
+export function getMonthRangeError(monthFrom: IOption | null, monthTo: IOption | null): string | null {
+  const from = monthOrdinal(monthFrom);
+  const to = monthOrdinal(monthTo);
+  return from !== undefined && to !== undefined && from > to ? 'Promotion Month To field invalid format.' : null;
+}
+
+/**
  * Distinct, sorted E-Requisition No. (`TPMNo`) options derived from a set of rows — reflects
  * whatever is actually loaded from SharePoint right now, instead of a stale bundled list.
  */

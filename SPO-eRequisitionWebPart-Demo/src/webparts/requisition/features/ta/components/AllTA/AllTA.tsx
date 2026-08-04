@@ -46,6 +46,7 @@ const AllTA: React.FC = () => {
         onSearch={search.search}
         onClear={search.clear}
         onExport={search.exportExcel}
+        monthRangeError={search.monthRangeError}
       />
 
       <div className="row mt-3">

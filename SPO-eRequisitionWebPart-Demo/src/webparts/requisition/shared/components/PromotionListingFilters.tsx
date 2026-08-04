@@ -21,6 +21,7 @@ const PromotionListingFilters: React.FC<IPromotionListingFiltersProps> = ({
   extraAction,
   showChannelClear = true,
   showCategory = true,
+  monthRangeError,
 }) => (
   <>
     <div className="row">
@@ -75,6 +76,7 @@ const PromotionListingFilters: React.FC<IPromotionListingFiltersProps> = ({
           onChange={(option) => onChange('monthTo', option)}
           placeholder="Please select"
         />
+        {monthRangeError ? <div className="text-danger small mt-1">{monthRangeError}</div> : null}
       </div>
     </div>
 

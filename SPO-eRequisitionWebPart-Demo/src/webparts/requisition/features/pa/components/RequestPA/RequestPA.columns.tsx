@@ -65,13 +65,15 @@ const CommittedInput: React.FC<{
 /**
  * Columns for the per-transaction summary table.
  * @param disabled read-only (view) mode — disables Promotion Type / Category / week checkboxes.
- * @param onOpenAttachment opens the attachments viewer for a transaction's Ref No.
+ * @param onOpenAttachment opens the read-only attachments viewer (view mode) for a Ref No.
+ * @param onOpenUpload opens the attachment upload modal (create/edit mode) for a Ref No.
  * @param tpmNo the e-Requisition prefix, used to build each row's Ref No ("TPMNo-Transaction").
  */
 export function getTransactionColumns(
   disabled: boolean,
   handlers: IRequisitionFormHandlers,
   onOpenAttachment: (refNo: string) => void,
+  onOpenUpload: (refNo: string) => void,
   tpmNo: string,
 ): TableColumn<ITransactionRow>[] {
   return [
@@ -159,7 +161,14 @@ export function getTransactionColumns(
         <div className="d-flex gap-2">
           <button
             className="btn btn-outline-secondary rounded-xl"
-            onClick={() => onOpenAttachment(`${tpmNo}-${row.Transaction}`)}
+            onClick={() => {
+              const refNo = `${tpmNo}-${row.Transaction}`;
+              if (disabled) {
+                onOpenAttachment(refNo);
+              } else {
+                onOpenUpload(refNo);
+              }
+            }}
           >
             <i className="fa fa-paperclip me-1" /> Attachment
           </button>

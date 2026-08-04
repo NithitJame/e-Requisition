@@ -7,7 +7,8 @@ import * as React from 'react';
 import { ApprovalService } from '@/features/pa/services/ApprovalService';
 import { PromotionActivityService } from '@/features/pa/services/PromotionActivityService';
 import { filterPromotionActivities } from '@/features/pa/utils/promotionActivityFilter';
-import { buildERequisitionNoOptions } from '@/shared/utils/promotionListingFilter';
+import { buildERequisitionNoOptions, getMonthRangeError } from '@/shared/utils/promotionListingFilter';
+import { getCurrentFiscalYearValue } from '@/shared/utils/fiscalYear';
 import { APPROVAL_ACTION } from '@/features/pa/constants';
 import {
   IAllPaFilterState,
@@ -51,6 +52,8 @@ export interface IUseApprovePaInbox {
   rows: IApprovalInboxRow[];
   decisions: Record<number, IApprovalDecisionState>;
   submitAttempted: boolean;
+  /** Set as soon as Month From/To form an invalid (reversed) fiscal range — before Search. */
+  monthRangeError: string | null;
   setFilter: <K extends keyof IAllPaFilterState>(key: K, value: IAllPaFilterState[K]) => void;
   /** Always pulls a fresh pending inbox before filtering (there is no separate Refresh). */
   search: () => Promise<void>;
@@ -160,7 +163,9 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
         setFiscalYearOptions(fiscalYears);
         if (!defaultChannelAppliedRef.current) {
           defaultChannelAppliedRef.current = true;
-          setFilters((prev) => ({ ...prev, channel: channels, category: categories }));
+          const currentFiscalYear =
+            fiscalYears.find((option) => option.value === getCurrentFiscalYearValue()) ?? null;
+          setFilters((prev) => ({ ...prev, channel: channels, category: categories, fiscalYear: currentFiscalYear }));
         }
       })
       .catch((error) => console.error('[useApprovePaInbox] failed to load filter options.', error));
@@ -186,7 +191,21 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     [],
   );
 
+  // Reacts to every Month From/To change so the field-level error shows immediately, rather
+  // than waiting for Search to be pressed.
+  const monthRangeError = React.useMemo(
+    (): string | null => getMonthRangeError(filters.monthFrom, filters.monthTo),
+    [filters.monthFrom, filters.monthTo],
+  );
+
   const search = React.useCallback(async (): Promise<void> => {
+    // monthRangeError is also shown inline as soon as it's wrong; this is the last-resort
+    // guard so Search never runs against an invalid range.
+    if (monthRangeError) {
+      setRows([]);
+      return;
+    }
+
     setIsLoading(true);
     try {
       // There is no separate Refresh action, so Search always pulls a fresh pending inbox.
@@ -199,7 +218,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, loadInbox]);
+  }, [filters, loadInbox, monthRangeError]);
 
   const clear = React.useCallback((): void => {
     // Bottom "Clear" resets every filter EXCEPT Channel/Category (both default to "all
@@ -335,6 +354,7 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     rows,
     decisions,
     submitAttempted,
+    monthRangeError,
     setFilter,
     search,
     clear,

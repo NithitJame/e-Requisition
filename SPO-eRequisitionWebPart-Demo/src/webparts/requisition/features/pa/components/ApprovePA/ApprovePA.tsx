@@ -59,6 +59,7 @@ const ApprovePA: React.FC = () => {
         onSearch={inbox.search}
         onClear={inbox.clear}
         onExport={inbox.exportExcel}
+        monthRangeError={inbox.monthRangeError}
         extraAction={
           <button
             className="btn btn-outline-success rounded-xl me-2"

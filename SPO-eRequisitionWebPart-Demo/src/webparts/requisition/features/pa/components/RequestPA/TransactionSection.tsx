@@ -25,8 +25,10 @@ interface ITransactionSectionProps {
   isHighlighted?: boolean;
   /** Opens the Workflow History viewer for this transaction. */
   onOpenHistory: (refNo: string) => void;
-  /** Opens the Attachments viewer for this transaction. */
+  /** Opens the read-only Attachments viewer for this transaction (view mode). */
   onOpenAttachment: (refNo: string) => void;
+  /** Opens the Attachment upload modal for this transaction (create/edit mode). */
+  onOpenUpload: (refNo: string) => void;
 }
 
 const TransactionSection: React.FC<ITransactionSectionProps> = ({
@@ -38,6 +40,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
   isHighlighted,
   onOpenHistory,
   onOpenAttachment,
+  onOpenUpload,
 }) => {
   const totalTI = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TI);
   const totalTD = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TD);
@@ -62,7 +65,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
       <div className={`col-12 mt-3 ${isHighlighted ? styles.highlighted : ''}`} ref={sectionRef}>
         <MyDataTable
           data={transaction.tebles}
-          columns={getTransactionColumns(disabled, handlers, onOpenAttachment, tpmNo)}
+          columns={getTransactionColumns(disabled, handlers, onOpenAttachment, onOpenUpload, tpmNo)}
           isPagination={false}
         />
       </div>

@@ -9,9 +9,14 @@ import {
   IPromotionListingServerFilters,
   PromotionListingService,
 } from '@/shared/services/PromotionListingService';
-import { buildERequisitionNoOptions, filterPromotionActivities } from '@/shared/utils/promotionListingFilter';
+import {
+  buildERequisitionNoOptions,
+  filterPromotionActivities,
+  getMonthRangeError,
+} from '@/shared/utils/promotionListingFilter';
 import { exportRowsToCsv, IExportColumn } from '@/shared/utils/exportCsv';
 import { multiSelectSummary, singleSelectSummary } from '@/shared/utils/filterSummary';
+import { getCurrentFiscalYearValue } from '@/shared/utils/fiscalYear';
 import { FISCAL_MONTH_OPTIONS } from '@/shared/constants/promotionListing';
 import { IAllPaFilterState, IOption, IPromotionActivityRow } from '@/shared/types';
 
@@ -95,6 +100,8 @@ export interface IUsePromotionListing {
   fiscalYearOptions: IOption[];
   eRequisitionNoOptions: IOption[];
   rows: IPromotionActivityRow[];
+  /** Set as soon as Month From/To form an invalid (reversed) fiscal range — before Search. */
+  monthRangeError: string | null;
   setFilter: <K extends keyof IAllPaFilterState>(key: K, value: IAllPaFilterState[K]) => void;
   /** Always pulls fresh data from SharePoint before filtering (there is no separate Refresh). */
   search: () => Promise<void>;
@@ -192,9 +199,12 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
         setFiscalYearOptions(fiscalYears);
         if (!defaultFiltersAppliedRef.current) {
           defaultFiltersAppliedRef.current = true;
+          const currentFiscalYear =
+            fiscalYears.find((option) => option.value === getCurrentFiscalYearValue()) ?? null;
           setFilters((prev) => ({
             ...prev,
             channel: channels,
+            fiscalYear: currentFiscalYear,
             ...(config.defaultAllCategory !== false ? { category: categories } : {}),
           }));
         }
@@ -211,6 +221,13 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
       setFilters((prev) => ({ ...prev, [key]: value }));
     },
     [],
+  );
+
+  // Reacts to every Month From/To change so the field-level error shows immediately, rather
+  // than waiting for Search to be pressed.
+  const monthRangeError = React.useMemo(
+    (): string | null => getMonthRangeError(filters.monthFrom, filters.monthTo),
+    [filters.monthFrom, filters.monthTo],
   );
 
   /**
@@ -242,13 +259,11 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   }, [filters, channelOptions, categoryOptions]);
 
   const search = React.useCallback(async (): Promise<void> => {
-    // Month-range validation: Promotion Month From must not be later than To (fiscal order).
-    const from = monthOrdinal(filters.monthFrom);
-    const to = monthOrdinal(filters.monthTo);
-    if (from !== undefined && to !== undefined && from > to) {
+    // Month-range validation is also shown inline (monthRangeError) as soon as it's wrong;
+    // this is the last-resort guard so Search never runs against an invalid range.
+    if (monthRangeError) {
       setHasSearched(true);
       setRows([]);
-      setError('Promotion Month From ต้องไม่มากกว่า Promotion Month To');
       return;
     }
 
@@ -271,7 +286,7 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     } finally {
       setIsLoading(false);
     }
-  }, [filters, loadData, buildServerFilters]);
+  }, [filters, loadData, buildServerFilters, monthRangeError]);
 
   const clear = React.useCallback((): void => {
     // Bottom "Clear" resets every filter EXCEPT Channel/Category (both default to "all
@@ -314,6 +329,7 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     fiscalYearOptions,
     eRequisitionNoOptions,
     rows,
+    monthRangeError,
     setFilter,
     search,
     clear,

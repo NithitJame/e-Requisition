@@ -34,3 +34,24 @@
   border-radius: 8px;
   overflow: hidden;
 }
+
+// Content container for the Attachment upload modal (create/edit mode).
+.uploadModal {
+  padding: 16px;
+  min-width: min(420px, calc(100vw - 32px));
+  max-width: min(600px, calc(100vw - 32px));
+  font-size: 0.9rem;
+
+  h5 {
+    font-size: 1rem;
+  }
+}
+
+.uploadSlot + .uploadSlot {
+  margin-top: 8px;
+}
+
+.uploadSlotLabel {
+  width: 130px;
+  flex-shrink: 0;
+}

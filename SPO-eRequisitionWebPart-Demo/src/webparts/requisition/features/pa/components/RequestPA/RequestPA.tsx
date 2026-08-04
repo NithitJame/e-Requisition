@@ -14,6 +14,7 @@ import TransactionSection from './TransactionSection';
 import MockDataSeeder from './MockDataSeeder';
 import WorkflowHistoryModal from './WorkflowHistoryModal';
 import AttachmentsModal from './AttachmentsModal';
+import AttachmentUploadModal from './AttachmentUploadModal';
 import styles from './RequestPA.module.scss';
 
 // Dev-only tooling (Mock Data Seeder) is excluded from production bundles.
@@ -111,6 +112,7 @@ const RequestPA: React.FC = () => {
             }
             onOpenHistory={artifacts.openHistory}
             onOpenAttachment={artifacts.openAttachments}
+            onOpenUpload={artifacts.openUpload}
           />
         ))}
       </div>
@@ -166,6 +168,12 @@ const RequestPA: React.FC = () => {
 
       <WorkflowHistoryModal state={artifacts.history} onDismiss={artifacts.closeHistory} />
       <AttachmentsModal state={artifacts.attachments} onDismiss={artifacts.closeAttachments} />
+      <AttachmentUploadModal
+        state={artifacts.upload}
+        onDismiss={artifacts.closeUpload}
+        onFileChange={artifacts.setUploadFile}
+        onUpload={artifacts.submitUpload}
+      />
     </>
   );
 };
