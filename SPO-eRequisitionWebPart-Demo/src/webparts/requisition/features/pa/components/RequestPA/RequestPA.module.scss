@@ -25,33 +25,76 @@
 
 // Content container for the Workflow History modal. Fixed 900px width to match the
 // reference (legacy) "modal-lg" implementation's .modal-content, capped for narrow viewports.
-// border-radius + overflow: hidden give the modal box itself rounded corners (Fluent UI's
-// default Modal container is only subtly rounded).
+// Corner rounding is set on the Modal's own `main` slot (see WorkflowHistoryModal.tsx) — Fluent
+// UI wraps this div in its own box with its own edges, so border-radius set here would not
+// reach the actual outer corners.
 .workflowHistoryModal {
   padding: 16px;
   width: min(900px, calc(100vw - 32px));
   font-size: 0.8rem;
-  border-radius: 8px;
-  overflow: hidden;
 }
 
-// Content container for the Attachment upload modal (create/edit mode).
+// Content container for the Attachment upload modal (create/edit mode). Header and body are
+// split into their own padded sections (rather than one uniformly-padded box) so the header can
+// carry a full-width border-bottom separator. Corner rounding is set on the Modal's own `main`
+// slot (see AttachmentUploadModal.tsx) for the same reason as workflowHistoryModal above.
 .uploadModal {
-  padding: 16px;
-  min-width: min(420px, calc(100vw - 32px));
-  max-width: min(600px, calc(100vw - 32px));
+  min-width: min(500px, calc(100vw - 32px));
+  max-width: min(850px, calc(100vw - 32px));
   font-size: 0.9rem;
+}
+
+.uploadModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
 
   h5 {
-    font-size: 1rem;
+    font-size: 1.1rem;
+  }
+}
+
+.uploadModalBody {
+  padding: 16px 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.uploadSlot {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+
+  &:hover {
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+    border-color: var(--bs-border-color, #dee2e6);
   }
 }
 
 .uploadSlot + .uploadSlot {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .uploadSlotLabel {
   width: 130px;
   flex-shrink: 0;
+}
+
+// "Select file" never shrinks/wraps — the file name next to it shrinks instead (see below).
+.selectFileButton {
+  flex-shrink: 0;
+}
+
+// Lets this flex item shrink below its content's natural width, so the name inside can
+// ellipsis-truncate instead of squeezing "Select file". Flex items default to min-width: auto,
+// which would otherwise refuse to shrink at all.
+.uploadFileWrapper {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.uploadFileName {
+  min-width: 0;
 }

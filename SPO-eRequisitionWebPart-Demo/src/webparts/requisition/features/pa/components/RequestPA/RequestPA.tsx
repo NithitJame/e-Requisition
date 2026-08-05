@@ -112,7 +112,7 @@ const RequestPA: React.FC = () => {
             }
             onOpenHistory={artifacts.openHistory}
             onOpenAttachment={artifacts.openAttachments}
-            onOpenUpload={artifacts.openUpload}
+            onOpenUpload={artifacts.openUploadModal}
           />
         ))}
       </div>
@@ -169,10 +169,13 @@ const RequestPA: React.FC = () => {
       <WorkflowHistoryModal state={artifacts.history} onDismiss={artifacts.closeHistory} />
       <AttachmentsModal state={artifacts.attachments} onDismiss={artifacts.closeAttachments} />
       <AttachmentUploadModal
-        state={artifacts.upload}
-        onDismiss={artifacts.closeUpload}
-        onFileChange={artifacts.setUploadFile}
-        onUpload={artifacts.submitUpload}
+        isOpen={artifacts.uploadModal.isOpen}
+        refNo={artifacts.uploadModal.refNo}
+        files={form.transactions[artifacts.uploadModal.transactionIndex]?.pendingAttachments ?? []}
+        onDismiss={artifacts.closeUploadModal}
+        onFileChange={(slotIndex, file) =>
+          form.handlers.setTransactionAttachment(artifacts.uploadModal.transactionIndex, slotIndex, file)
+        }
       />
     </>
   );

@@ -15,6 +15,8 @@ import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
 import api, { getSiteUrl } from '@/shared/services/api';
 import {
   IAttachmentFile,
+  IChargeToCBURow,
+  IExpenseRow,
   IOption,
   IRequisitionRawData,
   IRequisitionTransaction,
@@ -54,16 +56,18 @@ interface IPagedResult {
   items: ISharePointItem[];
 }
 
+// `Id` is selected on every list so an edited requisition can be saved by updating the items it
+// was loaded from (see saveRequisition) instead of replacing the whole set.
 const SELECT_EXPAND = {
   PAD:
-    '$select=Title,TPMNo,Transaction,Fiscal,MechanicsDetails,Comments,Amount,Status,' +
+    '$select=Id,Title,TPMNo,Transaction,Fiscal,MechanicsDetails,Comments,Amount,Status,' +
     'W1_x002d_2,W3_x002d_4,TotalSpendingTICommitted,TotalSpendingTDCommitted,' +
     'CustomerSubGroup/Description,PromotionMonth/Description,PromotionType/Description,Category/Description' +
     '&$expand=CustomerSubGroup,PromotionMonth,PromotionType,Category',
   EXPENSES:
-    '$select=Title,TPMNo,Committed,Adjust,ClosedExpense,' +
+    '$select=Id,Title,TPMNo,Committed,Adjust,ClosedExpense,' +
     'Account_x0020_Name/Description,ExpenseType/Description&$expand=Account_x0020_Name,ExpenseType',
-  CBU: '$select=Title,TPMNo,Allocation,MajorGroupName/Description&$expand=MajorGroupName',
+  CBU: '$select=Id,Title,TPMNo,Allocation,MajorGroupName/Description&$expand=MajorGroupName',
 };
 
 export class RequisitionService {
@@ -313,20 +317,6 @@ export class RequisitionService {
     return items.length > 0;
   }
 
-  /** Deletes every Detail/Expense/CBU item for a TPM number (used to replace on edit). */
-  public async deleteRequisition(tpmNo: string): Promise<void> {
-    await this.deleteItemsByTPMNo(LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL, tpmNo);
-    await this.deleteItemsByTPMNo(LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES, tpmNo);
-    await this.deleteItemsByTPMNo(LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU, tpmNo);
-  }
-
-  private async deleteItemsByTPMNo(listName: string, tpmNo: string): Promise<void> {
-    const items = await this.getItemsByTPMNo(listName, tpmNo, '$select=Id,TPMNo');
-    for (const item of items) {
-      await this.deleteItemById(listName, Number(item.Id));
-    }
-  }
-
   private async deleteItemById(listName: string, id: number): Promise<void> {
     const url = `${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items(${id})`;
     try {
@@ -380,11 +370,17 @@ export class RequisitionService {
     return api.post(`${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`, body);
   }
 
-  private createDetailItem(
+  /**
+   * The Detail columns the form owns. Deliberately excludes the item's identity
+   * (`Title`/`Transaction`, set once at creation — see saveRequisition) and every column owned by
+   * the workflow engine (`WorkflowStatus`, `PendingUser`, the approval flags, `ExpectedToClose`,
+   * `Delay`, the `…Adjust` totals), so updating a requisition never clears them.
+   */
+  private buildDetailFields(
     header: IRequisitionSaveHeader,
     transaction: IRequisitionTransaction,
     maps: ILookupIdMaps,
-  ): Promise<void> {
+  ): object {
     const summary = transaction.tebles[0];
     // Per-transaction TI/TD totals (the header carries only the grand totals).
     const spendingTI = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TI);
@@ -392,11 +388,9 @@ export class RequisitionService {
     const categoryValue = summary && summary.Category ? (summary.Category.value as string | number) : undefined;
     const categoryId = this.resolveId(maps.category, categoryValue);
 
-    return this.createItem(LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL, {
-      Title: this.buildTitle(header.tpmNo, transaction),
+    return {
       TPMNo: header.tpmNo,
       Fiscal: header.fiscalYearValue,
-      Transaction: summary ? summary.Transaction : '',
       MechanicsDetails: transaction.MechanicsDetails,
       Comments: transaction.Comment,
       W1_x002d_2: summary ? summary.W12 : false,
@@ -414,54 +408,58 @@ export class RequisitionService {
       PromotionMonthId: this.resolveId(maps.promotionMonth, header.promotionMonthValue),
       PromotionTypeId: this.resolveId(maps.promotionType, this.optionValue(summary?.PromotionType)),
       CategoryId: categoryId === undefined ? undefined : [categoryId],
-    });
+    };
   }
 
-  private async createChildItems(
-    header: IRequisitionSaveHeader,
-    transaction: IRequisitionTransaction,
-    maps: ILookupIdMaps,
-  ): Promise<void> {
-    const requests: Promise<void>[] = [];
-    // Children join to their parent Detail row by Title (TPMNo + transaction number).
-    const title = this.buildTitle(header.tpmNo, transaction);
+  /** Charge-to-CBU columns. `Title` joins the row to its parent Detail item's Ref No. */
+  private buildCbuFields(tpmNo: string, title: string, cbu: IChargeToCBURow, maps: ILookupIdMaps): object {
+    return {
+      Title: title,
+      TPMNo: tpmNo,
+      Allocation: Number(cbu.Allocation),
+      MajorGroupNameId: this.resolveId(maps.majorGroupName, this.optionValue(cbu.MajorGroupName)),
+    };
+  }
 
-    for (const cbu of transaction.ChargeToCBU) {
-      requests.push(
-        this.createItem(LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU, {
-          Title: title,
-          TPMNo: header.tpmNo,
-          Allocation: Number(cbu.Allocation),
-          MajorGroupNameId: this.resolveId(maps.majorGroupName, this.optionValue(cbu.MajorGroupName)),
-        }),
-      );
-    }
-
-    for (const expense of transaction.EstimatedPromotionExpense) {
-      requests.push(
-        this.createItem(LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES, {
-          Title: title,
-          TPMNo: header.tpmNo,
-          Committed: Number(expense.Committed) || 0,
-          Adjust: Number(expense.Adjust) || 0,
-          ClosedExpense: Boolean(expense.Closed),
-          ExpenseTypeId: expense.TITDType === TITD_TYPE.TD ? EXPENSE_TYPE_ID.TD : EXPENSE_TYPE_ID.TI,
-          Account_x0020_NameId: this.resolveId(maps.accountName, this.optionValue(expense.ExpenseType)),
-        }),
-      );
-    }
-
-    await Promise.all(requests);
+  /** Estimated-expense columns. `Title` joins the row to its parent Detail item's Ref No. */
+  private buildExpenseFields(tpmNo: string, title: string, expense: IExpenseRow, maps: ILookupIdMaps): object {
+    return {
+      Title: title,
+      TPMNo: tpmNo,
+      Committed: Number(expense.Committed) || 0,
+      Adjust: Number(expense.Adjust) || 0,
+      ClosedExpense: Boolean(expense.Closed),
+      ExpenseTypeId: expense.TITDType === TITD_TYPE.TD ? EXPENSE_TYPE_ID.TD : EXPENSE_TYPE_ID.TI,
+      Account_x0020_NameId: this.resolveId(maps.accountName, this.optionValue(expense.ExpenseType)),
+    };
   }
 
   /** POSTs one item and throws a detailed error on failure (never swallow write errors). */
   private async createItem(listName: string, body: object): Promise<void> {
     try {
-      await this.postItem(listName, body);
+      await api.post(`${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`, body);
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
       const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
       throw new Error(`บันทึกลงรายการ "${listName}" ไม่สำเร็จ (HTTP ${status ?? 'unknown'}). ${detail}`);
+    }
+  }
+
+  /**
+   * MERGEs one item: only the fields present in `body` are written, so columns this app does not
+   * own keep their current values (SharePoint has no PATCH verb — the update is a POST with
+   * `X-HTTP-Method: MERGE`).
+   */
+  private async updateItem(listName: string, id: number, body: object): Promise<void> {
+    const url = `${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items(${id})`;
+    try {
+      await api.post(url, body, { headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' } });
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
+      throw new Error(
+        `แก้ไขรายการ "${listName}" (id ${id}) ไม่สำเร็จ (HTTP ${status ?? 'unknown'}). ${detail}`,
+      );
     }
   }
 
@@ -470,22 +468,112 @@ export class RequisitionService {
     return option ? (option.value as string | number) : undefined;
   }
 
-  /** Unique Detail Title: TPMNo + the transaction number, e.g. "DAPA2526-12-1". */
-  private buildTitle(tpmNo: string, transaction: IRequisitionTransaction): string {
-    const summary = transaction.tebles[0];
-    return `${tpmNo}-${summary ? summary.Transaction : ''}`;
+  /** Deletes the stored items whose ids the form no longer holds (rows the user removed). */
+  private async deleteRemovedItems(
+    listName: string,
+    storedItems: ISharePointItem[],
+    keptIds: Set<number>,
+  ): Promise<void> {
+    for (const item of storedItems) {
+      const id = Number(item.Id);
+      if (id && !keptIds.has(id)) await this.deleteItemById(listName, id);
+    }
   }
 
-  /** Creates a Promotion Activities Detail item plus its CBU/Expense children per transaction. */
+  /**
+   * Persists an e-Requisition by reconciling the form against what is already stored, rather
+   * than replacing the whole set: rows loaded from SharePoint (they carry an `Id`) are UPDATED in
+   * place, rows added in the form are CREATED, and stored rows the form no longer holds are
+   * DELETED individually. That keeps each item's id, Ref No, workflow state, and version history
+   * intact across edits. Files staged in the Attachment modal are uploaded here too, once each
+   * item's real Ref No is known.
+   *
+   * Ref No (`Title`) and `Transaction` are assigned once, when an item is created, and never
+   * rewritten — the form renumbers its rows for display when one is deleted, but attachments and
+   * workflow history are keyed by Ref No, so re-numbering stored items would orphan them. New
+   * transactions therefore continue from the highest stored number (gaps are expected).
+   *
+   * Attachment upload failures are RETURNED, not thrown: the requisition itself is already saved
+   * by then, so the caller reports them without implying the save failed.
+   */
   public async saveRequisition(
     header: IRequisitionSaveHeader,
     transactions: IRequisitionTransaction[],
     maps: ILookupIdMaps,
-  ): Promise<{ ok: boolean }> {
+  ): Promise<{ ok: boolean; attachmentFailures: Array<{ name: string; message: string }> }> {
+    const detailList = LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL;
+    const expenseList = LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES;
+    const cbuList = LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU;
+
+    // What is stored right now, so removals can be detected and new Ref Nos can't collide.
+    const [storedDetails, storedExpenses, storedCbus] = await Promise.all([
+      this.getItemsByTPMNo(detailList, header.tpmNo, '$select=Id,TPMNo,Transaction'),
+      this.getItemsByTPMNo(expenseList, header.tpmNo, '$select=Id,TPMNo'),
+      this.getItemsByTPMNo(cbuList, header.tpmNo, '$select=Id,TPMNo'),
+    ]);
+
+    let lastTransactionNo = storedDetails.reduce(
+      (highest, item) => Math.max(highest, Number(item.Transaction) || 0),
+      0,
+    );
+
+    const keptDetailIds = new Set<number>();
+    const keptExpenseIds = new Set<number>();
+    const keptCbuIds = new Set<number>();
+    const attachmentFailures: Array<{ name: string; message: string }> = [];
+
     for (const transaction of transactions) {
-      await this.createDetailItem(header, transaction, maps);
-      await this.createChildItems(header, transaction, maps);
+      const detailFields = this.buildDetailFields(header, transaction, maps);
+      let title: string;
+
+      if (transaction.Id) {
+        keptDetailIds.add(transaction.Id);
+        title = transaction.Title ?? `${header.tpmNo}-${transaction.tebles[0]?.Transaction ?? ''}`;
+        await this.updateItem(detailList, transaction.Id, detailFields);
+      } else {
+        lastTransactionNo += 1;
+        title = `${header.tpmNo}-${lastTransactionNo}`;
+        await this.createItem(detailList, {
+          ...detailFields,
+          Title: title,
+          Transaction: lastTransactionNo,
+        });
+      }
+
+      for (const cbu of transaction.ChargeToCBU) {
+        const body = this.buildCbuFields(header.tpmNo, title, cbu, maps);
+        if (cbu.Id) {
+          keptCbuIds.add(cbu.Id);
+          await this.updateItem(cbuList, cbu.Id, body);
+        } else {
+          await this.createItem(cbuList, body);
+        }
+      }
+
+      for (const expense of transaction.EstimatedPromotionExpense) {
+        const body = this.buildExpenseFields(header.tpmNo, title, expense, maps);
+        if (expense.Id) {
+          keptExpenseIds.add(expense.Id);
+          await this.updateItem(expenseList, expense.Id, body);
+        } else {
+          await this.createItem(expenseList, body);
+        }
+      }
+
+      // `title` is the Ref No the item actually carries, which is what attachments key on —
+      // not the transaction number the form happens to be displaying.
+      const stagedFiles = (transaction.pendingAttachments ?? []).filter((file): file is File => file !== null);
+      if (stagedFiles.length > 0) {
+        const uploaded = await this.uploadAttachments(title, stagedFiles);
+        attachmentFailures.push(...uploaded.failed);
+      }
     }
-    return { ok: true };
+
+    // Deletions run last so a failure part-way through never loses data that has no replacement.
+    await this.deleteRemovedItems(detailList, storedDetails, keptDetailIds);
+    await this.deleteRemovedItems(expenseList, storedExpenses, keptExpenseIds);
+    await this.deleteRemovedItems(cbuList, storedCbus, keptCbuIds);
+
+    return { ok: true, attachmentFailures };
   }
 }

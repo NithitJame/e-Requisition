@@ -10,7 +10,7 @@ import { calculateSpendingTotals } from '@/features/pa/utils/totals';
 import { mapRawDataToForm } from '@/features/pa/utils/requisitionMapper';
 import { buildMockRawData } from '@/features/pa/utils/mockTemplateMapper';
 import { validateRequisition } from '@/features/pa/utils/requisitionValidation';
-import { showErrorAlert, showPromotionExistsAlert, showSuccessAlert } from '@/shared/utils/notify';
+import { showErrorAlert, showPromotionExistsAlert, showSuccessAlert, showWarningAlert } from '@/shared/utils/notify';
 import {
   createEmptyChargeToCBURow,
   createEmptyExpenseRow,
@@ -106,8 +106,6 @@ export function useRequisitionForm(): IUseRequisitionForm {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [notFound, setNotFound] = React.useState<boolean>(false);
   const lookupMapsRef = React.useRef<ILookupIdMaps | null>(null);
-  // TPMNo of an existing promotion currently loaded for edit (drives replace-on-save).
-  const editingTpmNoRef = React.useRef<string | null>(null);
   // Last TPMNo the existence check ran for, to avoid re-checking the same selection.
   const lastCheckedTpmNoRef = React.useRef<string>('');
 
@@ -161,22 +159,19 @@ export function useRequisitionForm(): IUseRequisitionForm {
 
   /**
    * Auto-detect an existing promotion once Channel + Fiscal Year + Promotion Month are all
-   * chosen. If one exists for the TPM number, load it into the form for editing and notify
-   * the user; saving then REPLACES it (delete + recreate) rather than creating duplicates.
+   * chosen. If one exists for the TPM number, load it into the form for editing and notify the
+   * user. The loaded rows carry their SharePoint ids, so saving updates them in place rather
+   * than creating duplicates (see RequisitionService.saveRequisition).
    */
   const checkExistingPromotion = async (tpmNo: string): Promise<void> => {
     setIsLoading(true);
     try {
       const exists = await getService().promotionExists(tpmNo);
       if (lastCheckedTpmNoRef.current !== tpmNo) return; // selection changed during fetch
-      if (!exists) {
-        editingTpmNoRef.current = null; // new period -> save will create
-        return;
-      }
+      if (!exists) return; // new period -> save will create
       const raw = await getService().getRequisitionRawData(tpmNo);
       if (lastCheckedTpmNoRef.current !== tpmNo) return;
       const mapped = mapRawDataToForm(tpmNo, raw, createOptionSet(fiscalYearOptions));
-      editingTpmNoRef.current = tpmNo; // save will replace this existing promotion
       setChannel(mapped.channel);
       setFiscalYear(mapped.fiscalYear);
       setPromotionMonth(mapped.promotionMonth);
@@ -360,6 +355,18 @@ export function useRequisitionForm(): IUseRequisitionForm {
     );
   };
 
+  const setTransactionAttachment = (parentIndex: number, slotIndex: number, file: File | null): void => {
+    setTransactions((prev) =>
+      prev.map((item, i) => {
+        if (i !== parentIndex) return item;
+        const pendingAttachments = [...(item.pendingAttachments ?? [])];
+        while (pendingAttachments.length <= slotIndex) pendingAttachments.push(null);
+        pendingAttachments[slotIndex] = file;
+        return { ...item, pendingAttachments };
+      }),
+    );
+  };
+
   const addTransaction = (): void => {
     setTransactions((prev) => [...prev, createEmptyTransaction(prev.length + 1)]);
   };
@@ -401,12 +408,24 @@ export function useRequisitionForm(): IUseRequisitionForm {
       };
       const service = getService();
       const lookupMaps = lookupMapsRef.current ?? (await service.loadLookupIdMaps());
-      // Editing an existing promotion: replace it (delete + recreate) to avoid duplicates.
-      const existingTpmNo = editingTpmNoRef.current;
-      if (existingTpmNo) {
-        await service.deleteRequisition(existingTpmNo);
+      // Rows loaded from SharePoint are updated in place; only genuinely new rows are created.
+      const result = await service.saveRequisition(header, transactions, lookupMaps);
+
+      if (result.attachmentFailures.length > 0) {
+        // The requisition itself is saved — only some attachments failed. Stay on this page
+        // (rather than the usual navigate-away) and leave pendingAttachments in place so the
+        // user can retry by saving again, without re-picking every file.
+        const list = result.attachmentFailures.map((f) => `<li>${f.name}: ${f.message}</li>`).join('');
+        showWarningAlert(
+          `บันทึกข้อมูลสำเร็จ แต่แนบไฟล์ไม่สำเร็จ ${result.attachmentFailures.length} ไฟล์:` +
+            `<ul style="text-align:left;">${list}</ul>กรุณาลองกดบันทึกอีกครั้ง`,
+        );
+        return;
       }
-      await service.saveRequisition(header, transactions, lookupMaps);
+
+      // Every staged attachment (if any) uploaded successfully — clear them so a later Save
+      // doesn't upload the same files again.
+      setTransactions((prev) => prev.map((t) => ({ ...t, pendingAttachments: undefined })));
       showSuccessAlert();
       history.push('/pa');
     } catch (error) {
@@ -443,6 +462,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
     updateComment,
     addTransaction,
     removeTransaction,
+    setTransactionAttachment,
   };
 
   return {

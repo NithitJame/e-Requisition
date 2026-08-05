@@ -45,6 +45,9 @@ export interface ITransactionRow {
 
 /** One estimated promotion expense line. Committed/Adjust may be raw input strings. */
 export interface IExpenseRow {
+  /** SharePoint item id when this row was loaded from the list; absent for rows added in the
+   * form (save updates the former in place and creates the latter). */
+  Id?: number;
   ExpenseType: IExpenseOption | null;
   TITDType: string | null;
   Committed: number | string;
@@ -54,6 +57,8 @@ export interface IExpenseRow {
 
 /** One Charge-to-CBU allocation line. Allocation may be a raw input string. */
 export interface IChargeToCBURow {
+  /** SharePoint item id when loaded from the list; absent for rows added in the form. */
+  Id?: number;
   MajorGroupName: IOption | null;
   Category: string;
   Allocation: number | string;
@@ -61,12 +66,26 @@ export interface IChargeToCBURow {
 
 /** A single promotion transaction block (one Promotion Activities Detail record). */
 export interface IRequisitionTransaction {
+  /** Detail item id when loaded from the list; absent for transactions added in the form. */
+  Id?: number;
+  /**
+   * The stored Ref No (Detail `Title`, e.g. "DAPA2526-12-1"). Never re-derived from the form's
+   * displayed transaction number on save — attachments and workflow history are keyed by this
+   * value, so it stays fixed for the life of the item even if rows above it are deleted.
+   */
   Title?: string;
   tebles: ITransactionRow[];
   MechanicsDetails: string;
   EstimatedPromotionExpense: IExpenseRow[];
   ChargeToCBU: IChargeToCBURow[];
   Comment: string;
+  /**
+   * Files picked in the Attachment modal but not uploaded yet — one entry per modal slot, `null`
+   * for an empty slot. Kept on the transaction itself (not keyed by Ref No) so add/remove/reorder
+   * in the form can't mis-associate them; saveRequisition uploads them once the item's real Ref
+   * No is known (assigned once, at creation — see IRequisitionTransaction.Title).
+   */
+  pendingAttachments?: Array<File | null>;
 }
 
 /** Raw, untransformed SharePoint data for one e-Requisition. */
@@ -183,4 +202,6 @@ export interface IRequisitionFormHandlers {
   updateComment: (parentIndex: number, value: string) => void;
   addTransaction: () => void;
   removeTransaction: (index: number) => void;
+  /** Stages (or clears, with `null`) one Attachment-modal slot for a transaction. */
+  setTransactionAttachment: (parentIndex: number, slotIndex: number, file: File | null) => void;
 }

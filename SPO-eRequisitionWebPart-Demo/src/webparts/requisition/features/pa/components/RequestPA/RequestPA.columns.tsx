@@ -66,15 +66,19 @@ const CommittedInput: React.FC<{
  * Columns for the per-transaction summary table.
  * @param disabled read-only (view) mode — disables Promotion Type / Category / week checkboxes.
  * @param onOpenAttachment opens the read-only attachments viewer (view mode) for a Ref No.
- * @param onOpenUpload opens the attachment upload modal (create/edit mode) for a Ref No.
+ * @param onOpenUpload opens the attachment upload modal (create/edit mode) for this transaction.
  * @param tpmNo the e-Requisition prefix, used to build each row's Ref No ("TPMNo-Transaction").
+ * @param transactionIndex this transaction's position in the form's transactions array — the
+ * upload modal stages files on the transaction itself, so it needs the array index, not just
+ * the (possibly not-yet-final) displayed Ref No.
  */
 export function getTransactionColumns(
   disabled: boolean,
   handlers: IRequisitionFormHandlers,
   onOpenAttachment: (refNo: string) => void,
-  onOpenUpload: (refNo: string) => void,
+  onOpenUpload: (transactionIndex: number, refNo: string) => void,
   tpmNo: string,
+  transactionIndex: number,
 ): TableColumn<ITransactionRow>[] {
   return [
     {
@@ -166,7 +170,7 @@ export function getTransactionColumns(
               if (disabled) {
                 onOpenAttachment(refNo);
               } else {
-                onOpenUpload(refNo);
+                onOpenUpload(transactionIndex, refNo);
               }
             }}
           >

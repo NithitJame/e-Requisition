@@ -30,11 +30,17 @@ function bucketByTitle(rows: ISharePointItem[]): Record<string, ISharePointItem[
   return buckets;
 }
 
+/** SharePoint item id, or undefined when the field wasn't selected (ids always start at 1). */
+function itemId(raw: unknown): number | undefined {
+  return Number(raw) || undefined;
+}
+
 function mapExpenses(
   rows: ISharePointItem[],
   expenseOptions: IRequisitionOptionSet['expenseOptions'],
 ): IRequisitionTransaction['EstimatedPromotionExpense'] {
   return rows.map((expense) => ({
+    Id: itemId(expense.Id),
     // Expense Type comes from Account Name; the TI/TD type comes from ExpenseType.
     ExpenseType: findOption(expenseOptions, getLookupValue(expense.Account_x0020_Name)),
     TITDType: getLookupValue(expense.ExpenseType) as string | null,
@@ -52,6 +58,7 @@ function mapChargeToCBU(
   return rows.map((cbu) => {
     const majorGroupName = getLookupValue(cbu.MajorGroupName);
     return {
+      Id: itemId(cbu.Id),
       MajorGroupName: findOption(majorGroupOptions, majorGroupName),
       Category: majorGroupName ? categoryMap[String(majorGroupName)] ?? '' : '',
       Allocation: toNumber(cbu.Allocation),
@@ -78,6 +85,7 @@ export function mapRawDataToForm(
     const categoryValue = categories.length > 0 ? getLookupValue(categories[0]) : null;
 
     return {
+      Id: itemId(row.Id),
       Title: title,
       tebles: [
         {

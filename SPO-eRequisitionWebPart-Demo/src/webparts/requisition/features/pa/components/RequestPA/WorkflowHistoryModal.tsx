@@ -33,7 +33,12 @@ function formatDate(iso: string): string {
 }
 
 const WorkflowHistoryModal: React.FC<IWorkflowHistoryModalProps> = ({ state, onDismiss }) => (
-  <Modal isOpen={state.isOpen} onDismiss={onDismiss} isBlocking={false}>
+  <Modal
+    isOpen={state.isOpen}
+    onDismiss={onDismiss}
+    isBlocking={false}
+    styles={{ main: { borderRadius: 8, overflow: 'hidden' } }}
+  >
     <div className={styles.workflowHistoryModal}>
       {state.isLoading ? (
         <Spinner label="Loading..." />

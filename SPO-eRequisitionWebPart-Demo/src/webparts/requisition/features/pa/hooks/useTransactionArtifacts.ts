@@ -6,10 +6,6 @@ import * as React from 'react';
 
 import { RequisitionService } from '@/features/pa/services/RequisitionService';
 import { IAttachmentFile, IWorkflowHistoryEntry } from '@/features/pa/types';
-import { showErrorAlert, showSuccessAlert, showWarningAlert } from '@/shared/utils/notify';
-
-/** Number of file slots the upload modal offers per transaction. */
-export const ATTACHMENT_UPLOAD_SLOT_COUNT = 10;
 
 function getService(): RequisitionService {
   return new RequisitionService();
@@ -23,27 +19,32 @@ export interface IModalState<T> {
   items: T[];
 }
 
-/** State for the "Attachment" upload modal (create/edit mode only — view mode uses IModalState). */
-export interface IUploadState {
+/**
+ * Which transaction the Attachment upload modal is open for (create/edit mode only — view mode
+ * uses IModalState). The staged files themselves live on the transaction
+ * (IRequisitionTransaction.pendingAttachments, in useRequisitionForm) and are uploaded by
+ * RequisitionService.saveRequisition, not here — this is only the "is it open, and for which
+ * transaction" bit the modal needs.
+ */
+export interface IUploadModalState {
   isOpen: boolean;
+  /** Index into the form's transactions array — identifies the row regardless of Ref No. */
+  transactionIndex: number;
+  /** Ref No shown in the modal header. May not match what the transaction is ultimately saved
+   * under (e.g. a new transaction whose displayed number still shifts as others are added/removed). */
   refNo: string;
-  isUploading: boolean;
-  /** One slot per row in the modal; `null` = not yet chosen for that slot. */
-  files: Array<File | null>;
 }
 
 export interface IUseTransactionArtifacts {
   history: IModalState<IWorkflowHistoryEntry>;
   attachments: IModalState<IAttachmentFile>;
-  upload: IUploadState;
+  uploadModal: IUploadModalState;
   openHistory: (refNo: string) => void;
   closeHistory: () => void;
   openAttachments: (refNo: string) => void;
   closeAttachments: () => void;
-  openUpload: (refNo: string) => void;
-  closeUpload: () => void;
-  setUploadFile: (slotIndex: number, file: File | null) => void;
-  submitUpload: () => Promise<void>;
+  openUploadModal: (transactionIndex: number, refNo: string) => void;
+  closeUploadModal: () => void;
 }
 
 const emptyState = <T>(): IModalState<T> => ({
@@ -54,11 +55,10 @@ const emptyState = <T>(): IModalState<T> => ({
   items: [],
 });
 
-const emptyUploadState = (): IUploadState => ({
+const emptyUploadModalState = (): IUploadModalState => ({
   isOpen: false,
+  transactionIndex: -1,
   refNo: '',
-  isUploading: false,
-  files: new Array(ATTACHMENT_UPLOAD_SLOT_COUNT).fill(null),
 });
 
 export function useTransactionArtifacts(): IUseTransactionArtifacts {
@@ -68,7 +68,7 @@ export function useTransactionArtifacts(): IUseTransactionArtifacts {
   const [attachments, setAttachments] = React.useState<IModalState<IAttachmentFile>>(
     emptyState<IAttachmentFile>(),
   );
-  const [upload, setUpload] = React.useState<IUploadState>(emptyUploadState());
+  const [uploadModal, setUploadModal] = React.useState<IUploadModalState>(emptyUploadModalState());
 
   const openHistory = React.useCallback((refNo: string): void => {
     setHistory({ isOpen: true, refNo, isLoading: true, error: null, items: [] });
@@ -104,58 +104,21 @@ export function useTransactionArtifacts(): IUseTransactionArtifacts {
     [],
   );
 
-  const openUpload = React.useCallback((refNo: string): void => {
-    setUpload({ ...emptyUploadState(), isOpen: true, refNo });
+  const openUploadModal = React.useCallback((transactionIndex: number, refNo: string): void => {
+    setUploadModal({ isOpen: true, transactionIndex, refNo });
   }, []);
 
-  const closeUpload = React.useCallback((): void => setUpload(emptyUploadState()), []);
-
-  const setUploadFile = React.useCallback((slotIndex: number, file: File | null): void => {
-    setUpload((prev) => {
-      const files = [...prev.files];
-      files[slotIndex] = file;
-      return { ...prev, files };
-    });
-  }, []);
-
-  const submitUpload = React.useCallback(async (): Promise<void> => {
-    const files = upload.files.filter((file): file is File => file !== null);
-    if (files.length === 0) {
-      showWarningAlert('กรุณาเลือกไฟล์อย่างน้อยหนึ่งไฟล์ก่อนอัปโหลด');
-      return;
-    }
-
-    setUpload((prev) => ({ ...prev, isUploading: true }));
-    try {
-      const result = await getService().uploadAttachments(upload.refNo, files);
-      if (result.failed.length > 0) {
-        const list = result.failed.map((f) => `<li>${f.name}: ${f.message}</li>`).join('');
-        showWarningAlert(
-          `อัปโหลดสำเร็จ ${result.succeeded.length} ไฟล์ ` +
-            `แต่มี ${result.failed.length} ไฟล์ที่ไม่สำเร็จ:<ul style="text-align:left;">${list}</ul>`,
-        );
-      } else {
-        showSuccessAlert(`อัปโหลดไฟล์สำเร็จทั้งหมด ${result.succeeded.length} ไฟล์`);
-      }
-      setUpload(emptyUploadState());
-    } catch (error) {
-      console.error('[useTransactionArtifacts] upload failed.', error);
-      showErrorAlert('ไม่สามารถอัปโหลดไฟล์ได้ กรุณาลองใหม่อีกครั้ง');
-      setUpload((prev) => ({ ...prev, isUploading: false }));
-    }
-  }, [upload]);
+  const closeUploadModal = React.useCallback((): void => setUploadModal(emptyUploadModalState()), []);
 
   return {
     history,
     attachments,
-    upload,
+    uploadModal,
     openHistory,
     closeHistory,
     openAttachments,
     closeAttachments,
-    openUpload,
-    closeUpload,
-    setUploadFile,
-    submitUpload,
+    openUploadModal,
+    closeUploadModal,
   };
 }
