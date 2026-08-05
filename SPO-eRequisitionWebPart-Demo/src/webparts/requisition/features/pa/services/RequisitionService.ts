@@ -13,10 +13,12 @@ import {
 import { sumCommittedByType } from '@/features/pa/utils/totals';
 import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
 import api, { getSiteUrl } from '@/shared/services/api';
+import { moveItemToFolder, resolveChannelFolder } from '@/shared/utils/channelFolders';
 import {
   IAttachmentFile,
   IChargeToCBURow,
   IExpenseRow,
+  IMajorGroupOption,
   IOption,
   IRequisitionRawData,
   IRequisitionTransaction,
@@ -110,9 +112,15 @@ export class RequisitionService {
     return all.items.filter((row) => row.TPMNo === tpmNo);
   }
 
-  /** Builds a map of MajorGroupName (Description) -> Category from M_MajorGroupName. */
-  private async loadMajorGroupCategoryMap(): Promise<Record<string, string>> {
+  /**
+   * Reads M_MajorGroupName rows as { description, category } pairs, trying several REST
+   * projections since the "SubBrand:Category" projected lookup field is inconsistent (some
+   * tenants need $expand, some return it directly, some need the raw SubBrand object read).
+   * `filter` is an optional raw OData `$filter` value (e.g. "Active eq 1").
+   */
+  private async fetchMajorGroupItems(filter?: string): Promise<Array<{ description: string; category: string }>> {
     const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${LIST_NAMES.MAJOR_GROUP_NAME}')/items`;
+    const filterQuery = filter ? `$filter=${filter}&` : '';
 
     const readCategory = (item: ISharePointItem): string => {
       let raw: unknown = item.SubBrand_x003a_Category;
@@ -126,11 +134,10 @@ export class RequisitionService {
       return String(raw);
     };
 
-    // Projected lookup columns are inconsistent in REST, so try several shapes.
     const candidates = [
-      `${base}?$select=Description,SubBrand_x003a_Category&$top=${LIST_PAGE_SIZE}`,
-      `${base}?$select=Description,SubBrand/Category&$expand=SubBrand&$top=${LIST_PAGE_SIZE}`,
-      `${base}?$top=${LIST_PAGE_SIZE}`,
+      `${base}?$select=Description,SubBrand_x003a_Category&${filterQuery}$top=${LIST_PAGE_SIZE}`,
+      `${base}?$select=Description,SubBrand/Category&$expand=SubBrand&${filterQuery}$top=${LIST_PAGE_SIZE}`,
+      `${base}?${filterQuery}$top=${LIST_PAGE_SIZE}`,
     ];
 
     let items: ISharePointItem[] = [];
@@ -144,11 +151,31 @@ export class RequisitionService {
       }
     }
 
+    return items
+      .filter((item) => item.Description)
+      .map((item) => ({ description: String(item.Description), category: readCategory(item) }));
+  }
+
+  /** Builds a map of MajorGroupName (Description) -> Category from M_MajorGroupName. */
+  private async loadMajorGroupCategoryMap(): Promise<Record<string, string>> {
+    const items = await this.fetchMajorGroupItems();
     const map: Record<string, string> = {};
-    for (const item of items) {
-      if (item.Description) map[String(item.Description)] = readCategory(item);
-    }
+    for (const { description, category } of items) map[description] = category;
     return map;
+  }
+
+  /** MajorGroup Name dropdown options (Charge-to-CBU table), active rows only. */
+  public async getMajorGroupOptions(): Promise<IMajorGroupOption[]> {
+    const items = await this.fetchMajorGroupItems('Active eq 1');
+    const seen = new Set<string>();
+    const options: IMajorGroupOption[] = [];
+    for (const { description, category } of items) {
+      if (seen.has(description)) continue;
+      seen.add(description);
+      options.push({ value: description, label: description, category });
+    }
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
   }
 
   /** Loads all raw SharePoint data for a single e-Requisition. */
@@ -242,17 +269,22 @@ export class RequisitionService {
   }
 
   /**
-   * Uploads one file to the PA Documents library and tags it with the transaction's Ref No
-   * (the `Title` field getTransactionAttachments matches on). The upload itself is a plain
-   * `Files/add`; tagging is a second, best-effort MERGE — if it fails the file is still on
-   * SharePoint, it just won't show up under this Ref No until re-tagged.
+   * Uploads one file to the PA Documents library — into `folderUrl` (its Channel subfolder) when
+   * given, or the library root otherwise — and tags it with the transaction's Ref No (the
+   * `Title` field getTransactionAttachments matches on). Unlike the plain lists (Detail/Expenses/
+   * Charge to CBU), a document library lets `Files/add` target the destination folder directly,
+   * so there's no separate create-then-move step here. Tagging is a second, best-effort MERGE —
+   * if it fails the file is still on SharePoint, it just won't show up under this Ref No until
+   * re-tagged.
    */
-  private async uploadOneAttachment(refNo: string, file: File): Promise<void> {
+  private async uploadOneAttachment(refNo: string, file: File, folderUrl?: string): Promise<void> {
     const listName = LIST_NAMES.PA_DOCUMENTS;
     const safeFileName = file.name.replace(/'/g, "''");
-    const addUrl =
-      `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/RootFolder/Files/` +
-      `add(url='${safeFileName}',overwrite=true)`;
+    const addUrl = folderUrl
+      ? `${getSiteUrl()}/_api/web/GetFolderByServerRelativeUrl('${folderUrl.replace(/'/g, "''")}')` +
+        `/Files/add(url='${safeFileName}',overwrite=true)`
+      : `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/RootFolder/Files/` +
+        `add(url='${safeFileName}',overwrite=true)`;
 
     let serverRelativeUrl: string | undefined;
     try {
@@ -286,18 +318,19 @@ export class RequisitionService {
     }
   }
 
-  /** Uploads each file to PA Documents, tagging it with the transaction's Ref No. Per-file
-   * failures are collected rather than aborting the rest of the batch. */
+  /** Uploads each file to PA Documents (into its Channel folder, if resolved), tagging it with
+   * the transaction's Ref No. Per-file failures are collected rather than aborting the batch. */
   public async uploadAttachments(
     refNo: string,
     files: File[],
+    folderUrl?: string,
   ): Promise<{ succeeded: string[]; failed: Array<{ name: string; message: string }> }> {
     const succeeded: string[] = [];
     const failed: Array<{ name: string; message: string }> = [];
 
     for (const file of files) {
       try {
-        await this.uploadOneAttachment(refNo, file);
+        await this.uploadOneAttachment(refNo, file, folderUrl);
         succeeded.push(file.name);
       } catch (error) {
         failed.push({ name: file.name, message: error instanceof Error ? error.message : String(error) });
@@ -366,10 +399,6 @@ export class RequisitionService {
     return map[String(value)];
   }
 
-  private postItem(listName: string, body: object): Promise<unknown> {
-    return api.post(`${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`, body);
-  }
-
   /**
    * The Detail columns the form owns. Deliberately excludes the item's identity
    * (`Title`/`Transaction`, set once at creation — see saveRequisition) and every column owned by
@@ -434,10 +463,17 @@ export class RequisitionService {
     };
   }
 
-  /** POSTs one item and throws a detailed error on failure (never swallow write errors). */
-  private async createItem(listName: string, body: object): Promise<void> {
+  /**
+   * POSTs one item and throws a detailed error on failure (never swallow write errors). Returns
+   * the created item (its `Id`, used to move it into a Channel folder afterward).
+   */
+  private async createItem(listName: string, body: object): Promise<{ Id?: number }> {
     try {
-      await api.post(`${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`, body);
+      const response = await api.post<{ Id?: number }>(
+        `${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`,
+        body,
+      );
+      return response.data;
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
       const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
@@ -495,6 +531,12 @@ export class RequisitionService {
    *
    * Attachment upload failures are RETURNED, not thrown: the requisition itself is already saved
    * by then, so the caller reports them without implying the save failed.
+   *
+   * Newly-created items are moved into a Channel-named subfolder of each list (creating that
+   * folder first if it doesn't exist yet), matching how these lists are organised in SharePoint.
+   * Existing items being updated are left in whatever folder they already sit in — moving them
+   * is out of scope for now. Folder resolution/creation is best-effort: if it fails for any
+   * reason the item is still created/updated correctly, it just stays at the list root.
    */
   public async saveRequisition(
     header: IRequisitionSaveHeader,
@@ -504,12 +546,23 @@ export class RequisitionService {
     const detailList = LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL;
     const expenseList = LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES;
     const cbuList = LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU;
+    const documentsList = LIST_NAMES.PA_DOCUMENTS;
+    const channelName = String(header.channelValue ?? '').trim();
 
     // What is stored right now, so removals can be detected and new Ref Nos can't collide.
     const [storedDetails, storedExpenses, storedCbus] = await Promise.all([
       this.getItemsByTPMNo(detailList, header.tpmNo, '$select=Id,TPMNo,Transaction'),
       this.getItemsByTPMNo(expenseList, header.tpmNo, '$select=Id,TPMNo'),
       this.getItemsByTPMNo(cbuList, header.tpmNo, '$select=Id,TPMNo'),
+    ]);
+
+    // Every transaction in one save shares the same Channel, so each list's folder only needs
+    // resolving once. A failure here just means new items land at the list root, as before.
+    const [detailFolderUrl, expenseFolderUrl, cbuFolderUrl, attachmentFolderUrl] = await Promise.all([
+      resolveChannelFolder(detailList, channelName),
+      resolveChannelFolder(expenseList, channelName),
+      resolveChannelFolder(cbuList, channelName),
+      resolveChannelFolder(documentsList, channelName),
     ]);
 
     let lastTransactionNo = storedDetails.reduce(
@@ -533,11 +586,12 @@ export class RequisitionService {
       } else {
         lastTransactionNo += 1;
         title = `${header.tpmNo}-${lastTransactionNo}`;
-        await this.createItem(detailList, {
+        const created = await this.createItem(detailList, {
           ...detailFields,
           Title: title,
           Transaction: lastTransactionNo,
         });
+        if (created.Id && detailFolderUrl) await moveItemToFolder(detailList, created.Id, detailFolderUrl);
       }
 
       for (const cbu of transaction.ChargeToCBU) {
@@ -546,7 +600,8 @@ export class RequisitionService {
           keptCbuIds.add(cbu.Id);
           await this.updateItem(cbuList, cbu.Id, body);
         } else {
-          await this.createItem(cbuList, body);
+          const created = await this.createItem(cbuList, body);
+          if (created.Id && cbuFolderUrl) await moveItemToFolder(cbuList, created.Id, cbuFolderUrl);
         }
       }
 
@@ -556,7 +611,8 @@ export class RequisitionService {
           keptExpenseIds.add(expense.Id);
           await this.updateItem(expenseList, expense.Id, body);
         } else {
-          await this.createItem(expenseList, body);
+          const created = await this.createItem(expenseList, body);
+          if (created.Id && expenseFolderUrl) await moveItemToFolder(expenseList, created.Id, expenseFolderUrl);
         }
       }
 
@@ -564,7 +620,7 @@ export class RequisitionService {
       // not the transaction number the form happens to be displaying.
       const stagedFiles = (transaction.pendingAttachments ?? []).filter((file): file is File => file !== null);
       if (stagedFiles.length > 0) {
-        const uploaded = await this.uploadAttachments(title, stagedFiles);
+        const uploaded = await this.uploadAttachments(title, stagedFiles, attachmentFolderUrl);
         attachmentFailures.push(...uploaded.failed);
       }
     }

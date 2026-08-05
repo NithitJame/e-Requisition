@@ -8,7 +8,6 @@ import MyDataTable from '@/shared/components/DataTable';
 import LoadingOverlay from '@/shared/components/LoadingOverlay';
 import PromotionListingFilters from '@/shared/components/PromotionListingFilters';
 import { getPromotionListingColumns } from '@/shared/components/promotionListingColumns';
-import { monthOptions, workflowStatusOptions } from '@/shared/constants/listingFilterOptions';
 import { useAllTaSearch } from '@/features/ta/hooks/useAllTaSearch';
 
 const AllTA: React.FC = () => {
@@ -27,12 +26,19 @@ const AllTA: React.FC = () => {
     () => ({
       channelOptions: search.channelOptions,
       categoryOptions: search.categoryOptions,
-      monthOptions,
+      monthOptions: search.monthOptions,
       yearOptions: search.fiscalYearOptions,
-      workflowStatusOptions,
+      workflowStatusOptions: search.workflowStatusOptions,
       eRequisitionNoOptions: search.eRequisitionNoOptions,
     }),
-    [search.channelOptions, search.categoryOptions, search.fiscalYearOptions, search.eRequisitionNoOptions],
+    [
+      search.channelOptions,
+      search.categoryOptions,
+      search.monthOptions,
+      search.fiscalYearOptions,
+      search.workflowStatusOptions,
+      search.eRequisitionNoOptions,
+    ],
   );
 
   return (

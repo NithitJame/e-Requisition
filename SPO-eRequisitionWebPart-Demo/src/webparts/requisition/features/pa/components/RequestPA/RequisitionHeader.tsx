@@ -4,14 +4,15 @@
 import * as React from 'react';
 
 import SearchableSelect from '@/shared/components/SearchableSelect';
-import { channelOptions, monthOptions } from '@/features/pa/constants/filterOptions';
 import { IOption } from '@/features/pa/types';
 
 interface IRequisitionHeaderProps {
   channel: IOption | null;
+  channelOptions: IOption[];
   fiscalYear: IOption | null;
   fiscalYearOptions: IOption[];
   promotionMonth: IOption | null;
+  monthOptions: IOption[];
   eRequisitionNo: string;
   totalSpendingTI: number;
   totalSpendingTD: number;
@@ -23,9 +24,11 @@ interface IRequisitionHeaderProps {
 
 const RequisitionHeader: React.FC<IRequisitionHeaderProps> = ({
   channel,
+  channelOptions,
   fiscalYear,
   fiscalYearOptions,
   promotionMonth,
+  monthOptions,
   eRequisitionNo,
   totalSpendingTI,
   totalSpendingTD,

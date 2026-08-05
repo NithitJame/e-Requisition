@@ -13,6 +13,7 @@ export function useAllPaSearch(): IUsePromotionListing {
     baseSelect: PAD_BASE_SELECT,
     channelListName: LIST_NAMES.CUSTOMER_SUB_GROUP,
     categoryListName: LIST_NAMES.CATEGORY,
+    workflowStatusModule: 'PA',
     viewRoutePrefix: '/pa/request',
     exportFileName: 'promotion-activities',
   });

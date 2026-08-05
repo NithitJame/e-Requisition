@@ -14,6 +14,9 @@ import { fetchAllListItems } from '@/shared/utils/spItems';
 import api, { getSiteUrl } from '@/shared/services/api';
 import { IOption, IPromotionActivityRow, ISharePointItem } from '@/shared/types';
 import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
+import { fetchMasterListOptions } from '@/shared/services/masterListOptions';
+import { fetchMonthOptions } from '@/shared/services/MonthService';
+import { fetchWorkflowStatusOptions, TWorkflowStatusModule } from '@/shared/services/WorkflowStatusService';
 
 /**
  * Id-range width for a filtered chunk. `Id` is always indexed, so bounding a query to
@@ -41,6 +44,8 @@ export interface IPromotionListingConfig {
   channelListName: string;
   /** Category master list (e.g. "M_Category"). */
   categoryListName: string;
+  /** Which M_WorkflowStatus boolean column marks a status as applicable to this request type. */
+  workflowStatusModule: TWorkflowStatusModule;
 }
 
 /** Filter options sourced from SharePoint master lists. */
@@ -48,6 +53,8 @@ export interface IPromotionListingFilterOptions {
   channels: IOption[];
   categories: IOption[];
   fiscalYears: IOption[];
+  months: IOption[];
+  workflowStatuses: IOption[];
 }
 
 /**
@@ -162,40 +169,20 @@ export class PromotionListingService {
     return items;
   }
 
-  /** Maps a master-list to de-duplicated, label-sorted `IOption`s. */
-  private async getOptionsFromList(
-    listName: string,
-    valueField: string,
-    labelField: string,
-    odataFilter?: string,
-  ): Promise<IOption[]> {
-    const select = `$select=${valueField},${labelField}`;
-    const filter = odataFilter ? `&$filter=${odataFilter}` : '';
-    const items = await fetchAllListItems(listName, `${select}${filter}&$top=${LIST_PAGE_SIZE}`);
-
-    const seen = new Set<string>();
-    const options: IOption[] = [];
-    for (const raw of items) {
-      const item = raw as Record<string, unknown>;
-      const value = item[valueField];
-      if (value === null || value === undefined || value === '') continue;
-      const key = String(value);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      options.push({ value: value as string | number, label: (item[labelField] as string) ?? key });
-    }
-
-    options.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-    return options;
-  }
-
   /** Loads the SharePoint-backed dropdown options used by the listing filters. */
   public async getFilterOptions(): Promise<IPromotionListingFilterOptions> {
-    const [channels, categories, fiscalYears] = await Promise.all([
-      this.getOptionsFromList(this.config.channelListName, 'Nickname', 'Description'),
-      this.getOptionsFromList(this.config.categoryListName, 'Description', 'Description', 'Active eq 1'),
+    const [channels, categories, fiscalYears, months, workflowStatuses] = await Promise.all([
+      fetchMasterListOptions({ listName: this.config.channelListName, valueField: 'Nickname', labelField: 'Description' }),
+      fetchMasterListOptions({
+        listName: this.config.categoryListName,
+        valueField: 'Description',
+        labelField: 'Description',
+        odataFilter: 'Active eq 1',
+      }),
       fetchFiscalYearOptions(),
+      fetchMonthOptions(),
+      fetchWorkflowStatusOptions(this.config.workflowStatusModule),
     ]);
-    return { channels, categories, fiscalYears };
+    return { channels, categories, fiscalYears, months, workflowStatuses };
   }
 }

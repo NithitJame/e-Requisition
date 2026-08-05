@@ -27,6 +27,15 @@ export interface IChannelShortOption {
   code: string;
 }
 
+/**
+ * A MajorGroup Name option for the Charge-to-CBU table. `category` is the M_MajorGroupName
+ * "SubBrand:Category" value, applied to the row's read-only Category cell when this option
+ * is selected.
+ */
+export interface IMajorGroupOption extends IOption {
+  category: string;
+}
+
 /** Action triggered by the form footer buttons. */
 export type TFormAction = 'Draft' | 'Submit';
 
@@ -104,7 +113,7 @@ export interface IRequisitionOptionSet {
   promotionOptions: IOption[];
   categoryOptions: IOption[];
   expenseOptions: IExpenseOption[];
-  majorGroupOptions: IOption[];
+  majorGroupOptions: IMajorGroupOption[];
 }
 
 /**

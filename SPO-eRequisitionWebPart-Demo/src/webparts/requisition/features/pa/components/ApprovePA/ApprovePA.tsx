@@ -7,7 +7,6 @@ import * as React from 'react';
 import MyDataTable from '@/shared/components/DataTable';
 import LoadingOverlay from '@/shared/components/LoadingOverlay';
 import { useApprovePaInbox } from '@/features/pa/hooks/useApprovePaInbox';
-import { monthOptions, workflowStatusOptions } from '@/features/pa/constants/filterOptions';
 import AllPaFilters from '@/features/pa/components/AllPA/AllPaFilters';
 import { getApprovePaColumns } from './ApprovePA.columns';
 
@@ -40,12 +39,19 @@ const ApprovePA: React.FC = () => {
     () => ({
       channelOptions: inbox.channelOptions,
       categoryOptions: inbox.categoryOptions,
-      monthOptions,
+      monthOptions: inbox.monthOptions,
       yearOptions: inbox.fiscalYearOptions,
-      workflowStatusOptions,
+      workflowStatusOptions: inbox.workflowStatusOptions,
       eRequisitionNoOptions: inbox.eRequisitionNoOptions,
     }),
-    [inbox.channelOptions, inbox.categoryOptions, inbox.fiscalYearOptions, inbox.eRequisitionNoOptions],
+    [
+      inbox.channelOptions,
+      inbox.categoryOptions,
+      inbox.monthOptions,
+      inbox.fiscalYearOptions,
+      inbox.workflowStatusOptions,
+      inbox.eRequisitionNoOptions,
+    ],
   );
 
   return (

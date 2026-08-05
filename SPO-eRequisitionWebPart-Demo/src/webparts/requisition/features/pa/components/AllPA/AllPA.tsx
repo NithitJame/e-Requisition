@@ -6,7 +6,6 @@ import * as React from 'react';
 import MyDataTable from '@/shared/components/DataTable';
 import LoadingOverlay from '@/shared/components/LoadingOverlay';
 import { useAllPaSearch } from '@/features/pa/hooks/useAllPaSearch';
-import { monthOptions, workflowStatusOptions } from '@/features/pa/constants/filterOptions';
 import AllPaFilters from './AllPaFilters';
 import { getAllPaColumns } from './AllPA.columns';
 
@@ -19,12 +18,19 @@ const AllPA: React.FC = () => {
     () => ({
       channelOptions: search.channelOptions,
       categoryOptions: search.categoryOptions,
-      monthOptions,
+      monthOptions: search.monthOptions,
       yearOptions: search.fiscalYearOptions,
-      workflowStatusOptions,
+      workflowStatusOptions: search.workflowStatusOptions,
       eRequisitionNoOptions: search.eRequisitionNoOptions,
     }),
-    [search.channelOptions, search.categoryOptions, search.fiscalYearOptions, search.eRequisitionNoOptions],
+    [
+      search.channelOptions,
+      search.categoryOptions,
+      search.monthOptions,
+      search.fiscalYearOptions,
+      search.workflowStatusOptions,
+      search.eRequisitionNoOptions,
+    ],
   );
 
   return (

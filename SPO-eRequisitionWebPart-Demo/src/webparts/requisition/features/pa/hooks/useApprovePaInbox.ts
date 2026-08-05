@@ -48,6 +48,8 @@ export interface IUseApprovePaInbox {
   channelOptions: IOption[];
   categoryOptions: IOption[];
   fiscalYearOptions: IOption[];
+  monthOptions: IOption[];
+  workflowStatusOptions: IOption[];
   eRequisitionNoOptions: IOption[];
   rows: IApprovalInboxRow[];
   decisions: Record<number, IApprovalDecisionState>;
@@ -120,6 +122,8 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   const [channelOptions, setChannelOptions] = React.useState<IOption[]>([]);
   const [categoryOptions, setCategoryOptions] = React.useState<IOption[]>([]);
   const [fiscalYearOptions, setFiscalYearOptions] = React.useState<IOption[]>([]);
+  const [monthOptions, setMonthOptions] = React.useState<IOption[]>([]);
+  const [workflowStatusOptions, setWorkflowStatusOptions] = React.useState<IOption[]>([]);
   const [eRequisitionNoOptions, setERequisitionNoOptions] = React.useState<IOption[]>([]);
   const [rows, setRows] = React.useState<IApprovalInboxRow[]>([]);
   const [decisions, setDecisions] = React.useState<Record<number, IApprovalDecisionState>>({});
@@ -157,10 +161,12 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
   React.useEffect(() => {
     getPromotionActivityService()
       .getFilterOptions()
-      .then(({ channels, categories, fiscalYears }) => {
+      .then(({ channels, categories, fiscalYears, months, workflowStatuses }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
         setFiscalYearOptions(fiscalYears);
+        setMonthOptions(months);
+        setWorkflowStatusOptions(workflowStatuses);
         if (!defaultChannelAppliedRef.current) {
           defaultChannelAppliedRef.current = true;
           const currentFiscalYear =
@@ -350,6 +356,8 @@ export function useApprovePaInbox(): IUseApprovePaInbox {
     channelOptions,
     categoryOptions,
     fiscalYearOptions,
+    monthOptions,
+    workflowStatusOptions,
     eRequisitionNoOptions,
     rows,
     decisions,

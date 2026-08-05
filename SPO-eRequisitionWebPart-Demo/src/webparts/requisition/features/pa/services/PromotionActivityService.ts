@@ -19,6 +19,7 @@ export class PromotionActivityService extends PromotionListingService {
       baseSelect: PAD_BASE_SELECT,
       channelListName: LIST_NAMES.CUSTOMER_SUB_GROUP,
       categoryListName: LIST_NAMES.CATEGORY,
+      workflowStatusModule: 'PA',
     });
   }
 }

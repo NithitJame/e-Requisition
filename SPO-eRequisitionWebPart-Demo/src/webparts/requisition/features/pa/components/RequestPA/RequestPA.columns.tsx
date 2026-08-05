@@ -5,11 +5,11 @@ import * as React from 'react';
 import { TableColumn } from 'react-data-table-component';
 
 import SearchableSelect from '@/shared/components/SearchableSelect';
-import { MAJOR_GROUP_OPTIONS } from '@/features/pa/constants';
 import { categoryOptions, expenseOptions, promotionOptions } from '@/features/pa/constants/filterOptions';
 import {
   IChargeToCBURow,
   IExpenseRow,
+  IMajorGroupOption,
   IRequisitionFormHandlers,
   ITransactionRow,
 } from '@/features/pa/types';
@@ -256,8 +256,9 @@ export function getExpenseColumns(
           disabled
         />
       ),
-      minWidth: '100px',
-      grow: 2,
+      // Only ever shows "TI" or "TD".
+      minWidth: '70px',
+      grow: 1,
     },
     {
       name: boldHeader(<>Committed <RequiredMark /></>),
@@ -325,6 +326,7 @@ export function getChargeToCBUColumns(
   parentIndex: number,
   disabled: boolean,
   handlers: IRequisitionFormHandlers,
+  majorGroupOptions: IMajorGroupOption[],
 ): TableColumn<IChargeToCBURow>[] {
   return [
     {
@@ -333,12 +335,12 @@ export function getChargeToCBUColumns(
         const selectedValue =
           typeof row.MajorGroupName === 'object'
             ? row.MajorGroupName
-            : MAJOR_GROUP_OPTIONS.find((option) => option.value === String(row.MajorGroupName)) ?? null;
+            : majorGroupOptions.find((option) => option.value === String(row.MajorGroupName)) ?? null;
         return (
           <div className="w-100">
             <SearchableSelect
               isMulti={false}
-              options={MAJOR_GROUP_OPTIONS}
+              options={majorGroupOptions}
               value={selectedValue}
               onChange={(option) => handlers.updateChargeToCBURow(parentIndex, rowIndex, 'MajorGroupName', option)}
               placeholder="Please select"
@@ -349,7 +351,9 @@ export function getChargeToCBUColumns(
       },
       ignoreRowClick: true,
       allowOverflow: true,
-      minWidth: '160px',
+      // Wide enough for the longest MajorGroup Name label (e.g. "PASTEURIZE DARK COCOA")
+      // plus the select's clear/chip UI.
+      minWidth: '240px',
       grow: 0,
     },
     {
@@ -357,8 +361,9 @@ export function getChargeToCBUColumns(
       cell: (row) => (
         <input type="text" className="form-control text-end" value={row.Category} disabled />
       ),
-      minWidth: '90px',
-      grow: 4,
+      // Wide enough to show the longest Category value (e.g. "CONFECTIONERY") in full.
+      minWidth: '110px',
+      grow: 1.2,
     },
     {
       name: boldHeader(<>% Allocation <RequiredMark /></>),

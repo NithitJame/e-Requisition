@@ -79,9 +79,11 @@ const RequestPA: React.FC = () => {
 
       <RequisitionHeader
         channel={form.channel}
+        channelOptions={form.channelOptions}
         fiscalYear={form.fiscalYear}
         fiscalYearOptions={form.fiscalYearOptions}
         promotionMonth={form.promotionMonth}
+        monthOptions={form.monthOptions}
         eRequisitionNo={form.eRequisitionNo}
         totalSpendingTI={form.totalSpendingTI}
         totalSpendingTD={form.totalSpendingTD}
@@ -105,6 +107,7 @@ const RequestPA: React.FC = () => {
             transaction={transaction}
             disabled={form.disabledAction}
             handlers={form.handlers}
+            majorGroupOptions={form.majorGroupOptions}
             tpmNo={form.eRequisitionNo}
             isHighlighted={
               form.selectedTransaction !== null &&

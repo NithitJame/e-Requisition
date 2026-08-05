@@ -98,6 +98,8 @@ export interface IUsePromotionListing {
   channelOptions: IOption[];
   categoryOptions: IOption[];
   fiscalYearOptions: IOption[];
+  monthOptions: IOption[];
+  workflowStatusOptions: IOption[];
   eRequisitionNoOptions: IOption[];
   rows: IPromotionActivityRow[];
   /** Set as soon as Month From/To form an invalid (reversed) fiscal range — before Search. */
@@ -136,6 +138,8 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   const [channelOptions, setChannelOptions] = React.useState<IOption[]>([]);
   const [categoryOptions, setCategoryOptions] = React.useState<IOption[]>([]);
   const [fiscalYearOptions, setFiscalYearOptions] = React.useState<IOption[]>([]);
+  const [monthOptions, setMonthOptions] = React.useState<IOption[]>([]);
+  const [workflowStatusOptions, setWorkflowStatusOptions] = React.useState<IOption[]>([]);
   const [eRequisitionNoOptions, setERequisitionNoOptions] = React.useState<IOption[]>([]);
   const [rows, setRows] = React.useState<IPromotionActivityRow[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -152,8 +156,15 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
       baseSelect: config.baseSelect,
       channelListName: config.channelListName,
       categoryListName: config.categoryListName,
+      workflowStatusModule: config.workflowStatusModule,
     });
-  }, [config.detailListName, config.baseSelect, config.channelListName, config.categoryListName]);
+  }, [
+    config.detailListName,
+    config.baseSelect,
+    config.channelListName,
+    config.categoryListName,
+    config.workflowStatusModule,
+  ]);
 
   const buildViewUrl = React.useCallback(
     (tpmNo: string, transaction: number | string): string => {
@@ -193,10 +204,12 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
   React.useEffect(() => {
     getService()
       .getFilterOptions()
-      .then(({ channels, categories, fiscalYears }) => {
+      .then(({ channels, categories, fiscalYears, months, workflowStatuses }) => {
         setChannelOptions(channels);
         setCategoryOptions(categories);
         setFiscalYearOptions(fiscalYears);
+        setMonthOptions(months);
+        setWorkflowStatusOptions(workflowStatuses);
         if (!defaultFiltersAppliedRef.current) {
           defaultFiltersAppliedRef.current = true;
           const currentFiscalYear =
@@ -327,6 +340,8 @@ export function usePromotionListing(config: IPromotionListingHookConfig): IUsePr
     channelOptions,
     categoryOptions,
     fiscalYearOptions,
+    monthOptions,
+    workflowStatusOptions,
     eRequisitionNoOptions,
     rows,
     monthRangeError,

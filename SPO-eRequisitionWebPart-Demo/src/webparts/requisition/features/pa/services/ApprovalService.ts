@@ -32,6 +32,7 @@ import {
   ICurrentUser,
 } from '@/features/pa/types';
 import { fetchAllListItems } from '@/shared/utils/spItems';
+import { moveItemToFolder, resolveChannelFolder } from '@/shared/utils/channelFolders';
 import api, { getSiteUrl } from '@/shared/services/api';
 
 const PAD_LIST = LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL;
@@ -110,6 +111,7 @@ export class ApprovalService {
     currentUser: ICurrentUser,
   ): Promise<IApprovalSubmitResult> {
     const result: IApprovalSubmitResult = { submittedIds: [], errors: [] };
+    const folderCache = new Map<string, string | undefined>();
 
     for (const input of inputs) {
       const { row, decision, comment } = input;
@@ -125,7 +127,13 @@ export class ApprovalService {
         }
 
         await this.recordDecisionOnTransaction(row.Id, decision, comment);
-        await this.appendWorkflowHistory(row.Title, decision, comment, currentUser);
+
+        const channelName = row.CustomerSubGroup?.LookupValue ?? '';
+        if (!folderCache.has(channelName)) {
+          folderCache.set(channelName, await resolveChannelFolder(HISTORY_LIST, channelName));
+        }
+        await this.appendWorkflowHistory(row.Title, decision, comment, currentUser, folderCache.get(channelName));
+
         result.submittedIds.push(row.Id);
       } catch (error) {
         result.errors.push({
@@ -172,12 +180,13 @@ export class ApprovalService {
     await this.mergeItem(`${getSiteUrl()}/_api/web/lists/GetByTitle('${PAD_LIST}')/items(${itemId})`, body);
   }
 
-  /** Append one audit-trail row to PA Workflow History. */
+  /** Append one audit-trail row to PA Workflow History, filed into its Channel folder if resolved. */
   private async appendWorkflowHistory(
     refNo: string,
     decision: IApprovalSubmitInput['decision'],
     comment: string,
     currentUser: ICurrentUser,
+    folderUrl?: string,
   ): Promise<void> {
     const entityType = await this.getListItemEntityType(HISTORY_LIST);
     const body: Record<string, unknown> = {
@@ -188,7 +197,8 @@ export class ApprovalService {
       [WORKFLOW_HISTORY_FIELDS.ACTION]: decision,
       [WORKFLOW_HISTORY_FIELDS.COMMENT]: comment,
     };
-    await this.createItem(`${getSiteUrl()}/_api/web/lists/GetByTitle('${HISTORY_LIST}')/items`, body);
+    const created = await this.createItem(`${getSiteUrl()}/_api/web/lists/GetByTitle('${HISTORY_LIST}')/items`, body);
+    if (created.Id && folderUrl) await moveItemToFolder(HISTORY_LIST, created.Id, folderUrl);
   }
 
   /** Resolves and caches a list's `ListItemEntityTypeFullName` (needed for create/merge). */
@@ -207,9 +217,10 @@ export class ApprovalService {
     }
   }
 
-  private async createItem(url: string, body: Record<string, unknown>): Promise<void> {
+  private async createItem(url: string, body: Record<string, unknown>): Promise<{ Id?: number }> {
     try {
-      await api.post(url, body, { headers: VERBOSE_HEADERS });
+      const response = await api.post<{ d?: { Id?: number } }>(url, body, { headers: VERBOSE_HEADERS });
+      return { Id: response.data.d?.Id };
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
       throw new Error(`Create failed (HTTP ${status ?? 'unknown'}).`);

@@ -11,6 +11,7 @@ export function useAllTaSearch(): IUsePromotionListing {
     baseSelect: TA_DETAIL_BASE_SELECT,
     channelListName: TA_LISTS.CHANNEL_MASTER,
     categoryListName: TA_LISTS.CATEGORY_MASTER,
+    workflowStatusModule: 'TA',
     viewRoutePrefix: '/ta/request',
     exportFileName: 'trade-agreement',
   });

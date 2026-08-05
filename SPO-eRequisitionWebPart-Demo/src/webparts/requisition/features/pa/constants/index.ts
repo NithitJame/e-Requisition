@@ -1,7 +1,7 @@
 // Shared constants for the e-Requisition web part.
 // Extracted from RequestPA to remove magic strings/numbers (see docs/CONVENTIONS.md §1).
 
-import { IChannelShortOption, IOption } from '@/features/pa/types';
+import { IChannelShortOption } from '@/features/pa/types';
 
 // Mock Data Seeder constants (dev-only feature).
 export * from './mockData';
@@ -72,16 +72,6 @@ export const TITD_TYPE = { TI: 'TI', TD: 'TD' } as const;
 
 /** Lookup ids for the ExpenseType field in the Expenses list. */
 export const EXPENSE_TYPE_ID = { TD: 1, TI: 2 } as const;
-
-/** Major group (G.Brand) options for the Charge-to-CBU table. */
-export const MAJOR_GROUP_OPTIONS: IOption[] = [
-  { value: 'CP', label: 'CP' },
-  { value: 'F&B', label: 'F&B' },
-  { value: 'MC', label: 'MC' },
-  { value: 'RMC', label: 'RMC' },
-  { value: 'SH', label: 'SH' },
-  { value: 'Other', label: 'Other' },
-];
 
 /** Channel nickname -> full channel code map, used to build the e-Requisition number. */
 export const CHANNEL_SHORT_OPTIONS: IChannelShortOption[] = [

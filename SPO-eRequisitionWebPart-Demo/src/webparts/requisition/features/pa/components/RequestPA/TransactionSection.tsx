@@ -6,7 +6,7 @@ import * as React from 'react';
 import MyDataTable from '@/shared/components/DataTable';
 import { TITD_TYPE } from '@/features/pa/constants';
 import { sumCommittedByType } from '@/features/pa/utils/totals';
-import { IRequisitionFormHandlers, IRequisitionTransaction } from '@/features/pa/types';
+import { IMajorGroupOption, IRequisitionFormHandlers, IRequisitionTransaction } from '@/features/pa/types';
 import {
   getChargeToCBUColumns,
   getExpenseColumns,
@@ -19,6 +19,7 @@ interface ITransactionSectionProps {
   transaction: IRequisitionTransaction;
   disabled: boolean;
   handlers: IRequisitionFormHandlers;
+  majorGroupOptions: IMajorGroupOption[];
   /** e-Requisition prefix (TPMNo), used to build this transaction's Ref No. */
   tpmNo: string;
   /** True for the transaction selected from the All Promotion Activities table. */
@@ -36,6 +37,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
   transaction,
   disabled,
   handlers,
+  majorGroupOptions,
   tpmNo,
   isHighlighted,
   onOpenHistory,
@@ -46,6 +48,14 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
   const totalTD = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TD);
   const transactionNo = transaction.tebles[0]?.Transaction ?? '';
   const refNo = transaction.Title ?? `${tpmNo}-${transactionNo}`;
+
+  // MajorGroup Name choices for this transaction's Charge-to-CBU table are narrowed to the
+  // ones whose SubBrand:Category matches this transaction's own Category selection (above).
+  // Before a Category is picked, every active MajorGroup Name is offered.
+  const selectedCategory = transaction.tebles[0]?.Category;
+  const cbuMajorGroupOptions = selectedCategory
+    ? majorGroupOptions.filter((option) => option.category === String(selectedCategory.value))
+    : majorGroupOptions;
 
   const sectionRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -87,7 +97,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
       <div className="col-12 mt-3">
         <div className="row">
           {/* Left: Estimated Promotion Expense */}
-          <div className="col-12 col-xl-8 col-lg-7 col-md-7">
+          <div className="col-12 col-xl-7 col-lg-6 col-md-6">
             <div className="tag-custom-1 mb-3">Estimated Promotion Expense</div>
 
             <div className="border rounded">
@@ -194,13 +204,13 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
           </div>
 
           {/* Right: Charge to CBU */}
-          <div className="col-12 col-xl-4 col-lg-5 col-md-5">
+          <div className="col-12 col-xl-5 col-lg-6 col-md-6">
             <div className="tag-custom-1 mb-3">Charge to CBU</div>
 
             <div className="border rounded">
               <MyDataTable
                 data={transaction.ChargeToCBU}
-                columns={getChargeToCBUColumns(index, disabled, handlers)}
+                columns={getChargeToCBUColumns(index, disabled, handlers, cbuMajorGroupOptions)}
                 isPagination={false}
               />
             </div>
