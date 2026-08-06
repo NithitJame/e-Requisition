@@ -4,7 +4,8 @@
 import * as React from 'react';
 
 import MyDataTable from '@/shared/components/DataTable';
-import { TITD_TYPE } from '@/features/pa/constants';
+import { showConfirmDialog } from '@/shared/utils/notify';
+import { TITD_TYPE, WORKFLOW_STATUS_OPEN } from '@/features/pa/constants';
 import { sumCommittedByType } from '@/features/pa/utils/totals';
 import { IMajorGroupOption, IOption, IRequisitionFormHandlers, IRequisitionTransaction } from '@/features/pa/types';
 import {
@@ -32,6 +33,19 @@ interface ITransactionSectionProps {
   onOpenAttachment: (refNo: string) => void;
   /** Opens the Attachment upload modal for this transaction (create/edit mode). */
   onOpenUpload: (transactionIndex: number, refNo: string) => void;
+  /**
+   * Saves just this transaction (Detail + its own Expense/CBU rows), without touching any other
+   * transaction or its Status/WorkflowStatus. Only rendered in view mode while this transaction's
+   * WorkflowStatus is "Open" — see the `editableFields` derivation below.
+   */
+  onSaveOpenTransaction: (index: number) => void;
+  /**
+   * Deletes just this transaction (Detail + its own Expense/CBU rows) immediately — unlike
+   * `handlers.removeTransaction`, which only marks it for deletion locally until the next full
+   * Save. Used instead of that handler in view mode, where there is no later page-level Save to
+   * persist a deferred removal.
+   */
+  onDeleteOpenTransaction: (index: number) => void;
 }
 
 const TransactionSection: React.FC<ITransactionSectionProps> = ({
@@ -47,11 +61,27 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
   onOpenHistory,
   onOpenAttachment,
   onOpenUpload,
+  onSaveOpenTransaction,
+  onDeleteOpenTransaction,
 }) => {
   const totalTI = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TI);
   const totalTD = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TD);
   const transactionNo = transaction.tebles[0]?.Transaction ?? '';
   const refNo = transaction.Title ?? `${tpmNo}-${transactionNo}`;
+
+  // View mode locks everything by default; this transaction's own fields listed in
+  // getTransactionColumns/getExpenseColumns/getChargeToCBUColumns stay editable while its
+  // WorkflowStatus is still "Open", OR while it was just added this session and never saved
+  // (no Id yet, so it has no WorkflowStatus to check — treated like a normal new transaction,
+  // fully editable). Outside view mode, editableFields is always true — unchanged create/edit
+  // behaviour.
+  const isNewTransaction = !transaction.Id;
+  const isOpenTransaction = transaction.workflowStatus === WORKFLOW_STATUS_OPEN;
+  const editableFields = !disabled || isNewTransaction || isOpenTransaction;
+  // True only for a transaction that already existed on the server before this view — Category/
+  // Comment/etc. stay locked for those (even when Open), but not for one added just now.
+  const isLockedTransaction = disabled && !isNewTransaction;
+  const showOpenTransactionSave = disabled && (isNewTransaction || isOpenTransaction);
 
   // MajorGroup Name choices for this transaction's Charge-to-CBU table are narrowed to the
   // ones whose SubBrand:Category matches this transaction's own Category selection (above).
@@ -80,7 +110,8 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
         <MyDataTable
           data={transaction.tebles}
           columns={getTransactionColumns(
-            disabled,
+            isLockedTransaction,
+            editableFields,
             handlers,
             onOpenAttachment,
             onOpenUpload,
@@ -99,7 +130,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
           className="form-control"
           value={transaction.MechanicsDetails}
           onChange={(e) => handlers.updateMechanicsDetails(index, e.target.value)}
-          disabled={disabled}
+          disabled={!editableFields}
         />
       </div>
 
@@ -116,13 +147,13 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
             <div className="border rounded">
               <MyDataTable
                 data={transaction.EstimatedPromotionExpense}
-                columns={getExpenseColumns(index, disabled, handlers)}
+                columns={getExpenseColumns(index, disabled, editableFields, handlers)}
                 isPagination={false}
               />
             </div>
 
             <div className="mt-3">
-              {!disabled ? (
+              {editableFields ? (
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-info rounded-xl"
@@ -192,16 +223,25 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
                 rows={2}
                 value={transaction.Comment || ''}
                 onChange={(e) => handlers.updateComment(index, e.target.value)}
-                disabled={disabled}
+                disabled={isLockedTransaction}
               />
             </div>
 
             <div className="mt-3 d-flex gap-2">
-              {!disabled && (
+              {editableFields && (
                 <button
                   type="button"
                   className="btn btn-outline-danger btn-sm rounded-xl"
-                  onClick={() => handlers.removeTransaction(index)}
+                  onClick={async () => {
+                    // onDeleteOpenTransaction already confirms itself (it deletes immediately, no
+                    // later Save to catch a mistake) — don't confirm twice for that path.
+                    if (isLockedTransaction) {
+                      onDeleteOpenTransaction(index);
+                      return;
+                    }
+                    const confirmed = await showConfirmDialog(`ต้องการลบ Transaction "${refNo}" ใช่หรือไม่?`);
+                    if (confirmed) handlers.removeTransaction(index);
+                  }}
                 >
                   <i className="fa fa-trash me-1" /> Delete Transaction
                 </button>
@@ -213,6 +253,21 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
               >
                 <i className="fa fa-history me-1" /> View Workflow History
               </button>
+              {showOpenTransactionSave && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm rounded-xl"
+                    onClick={() => onSaveOpenTransaction(index)}
+                  >
+                    Save Draft
+                  </button>
+                  {/* Placeholder — not wired up yet; behaviour to be defined separately. */}
+                  <button type="button" className="btn btn-danger btn-sm rounded-xl">
+                    Send To Approve
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -226,6 +281,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
                 columns={getChargeToCBUColumns(
                   index,
                   disabled,
+                  editableFields,
                   handlers,
                   cbuMajorGroupOptions,
                   transaction.tebles[0]?.Allocation ?? false,
@@ -236,7 +292,7 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
             </div>
 
             <div className="mt-3">
-              {!disabled ? (
+              {editableFields ? (
                 <button
                   className="btn btn-sm btn-outline-info rounded-xl"
                   onClick={() => handlers.addChargeToCBURow(index)}

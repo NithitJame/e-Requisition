@@ -81,6 +81,12 @@ export interface IRequisitionTransaction {
   ChargeToCBU: IChargeToCBURow[];
   Comment: string;
   /**
+   * M_WorkflowStatus `Title` for this transaction (e.g. "Open", "Waiting by SM"). Only read in
+   * view mode, to decide whether the View page's limited inline edit is available — see
+   * RequestPA/TransactionSection.tsx.
+   */
+  workflowStatus?: string | null;
+  /**
    * Files picked in the Attachment modal but not uploaded yet — one entry per modal slot, `null`
    * for an empty slot. Kept on the transaction itself (not keyed by Ref No) so add/remove/reorder
    * in the form can't mis-associate them; saveRequisition uploads them once the item's real Ref

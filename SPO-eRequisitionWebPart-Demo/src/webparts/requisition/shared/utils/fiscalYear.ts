@@ -1,3 +1,4 @@
+import { FISCAL_MONTH_OPTIONS } from '@/shared/constants/promotionListing';
 import { IOption, ISharePointItem } from '@/shared/types';
 
 export function mapFiscalYearOptions(items: ISharePointItem[]): IOption[] {
@@ -27,4 +28,26 @@ export function getCurrentFiscalYearValue(now: Date = new Date()): string {
   const startYear = now.getMonth() >= 8 ? calendarYear : calendarYear - 1; // month 8 = September
   const endYear = startYear + 1;
   return `${pad2(startYear % 100)}${pad2(endYear % 100)}`;
+}
+
+/**
+ * The plain calendar year (e.g. "2025") for a fiscal-year + Promotion Month combination.
+ * `fiscalYearValue` packs the last two digits of the start and end calendar year (see
+ * getCurrentFiscalYearValue) — September-December fall in the start year, January-August in
+ * the end year (see FISCAL_MONTH_OPTIONS). Assumes the 21st century (20xx), true for every
+ * fiscal year this system has used so far. Returns undefined if either input is unresolvable.
+ */
+export function getCalendarYearForFiscalPeriod(
+  fiscalYearValue: string | number | undefined,
+  promotionMonthLabel: string | number | undefined,
+): string | undefined {
+  const fiscal = String(fiscalYearValue ?? '');
+  if (fiscal.length !== 4) return undefined;
+  const month = FISCAL_MONTH_OPTIONS.find((option) => option.label === promotionMonthLabel);
+  if (!month) return undefined;
+
+  const startYear = `20${fiscal.slice(0, 2)}`;
+  const endYear = `20${fiscal.slice(2, 4)}`;
+  // Fiscal months "01"-"04" = September-December (start year); "05"-"12" = January-August (end year).
+  return Number(month.value) <= 4 ? startYear : endYear;
 }

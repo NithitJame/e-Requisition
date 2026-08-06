@@ -118,6 +118,8 @@ const RequestPA: React.FC = () => {
             onOpenHistory={artifacts.openHistory}
             onOpenAttachment={artifacts.openAttachments}
             onOpenUpload={artifacts.openUploadModal}
+            onSaveOpenTransaction={form.saveOpenTransaction}
+            onDeleteOpenTransaction={form.deleteOpenTransaction}
           />
         ))}
       </div>
@@ -130,15 +132,16 @@ const RequestPA: React.FC = () => {
 
       <div className="row mt-3">
         <div className="col-12">
-          {!form.disabledAction ? (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-info rounded-xl"
-              onClick={form.handlers.addTransaction}
-            >
-              <i className="fa fa-plus me-1" /> Add Promotion
-            </button>
-          ) : null}
+          {/* Shown in view mode too — a transaction added here has no Id/WorkflowStatus yet, so
+              TransactionSection treats it as fully editable (like a normal new transaction) and
+              gives it its own "Save Draft" (creates it, WorkflowStatus "Open") once filled in. */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-info rounded-xl"
+            onClick={form.handlers.addTransaction}
+          >
+            <i className="fa fa-plus me-1" /> Add Promotion
+          </button>
         </div>
       </div>
 

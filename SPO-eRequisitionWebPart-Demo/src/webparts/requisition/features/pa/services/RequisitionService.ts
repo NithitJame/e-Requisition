@@ -16,7 +16,8 @@ import { sumCommittedByType } from '@/features/pa/utils/totals';
 import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
 import { WORKFLOW_STATUS_MASTER_LIST_NAME } from '@/shared/services/WorkflowStatusService';
 import api, { getSiteUrl } from '@/shared/services/api';
-import { moveItemToFolder, resolveChannelFolder } from '@/shared/utils/channelFolders';
+import { resolveChannelFolder } from '@/shared/utils/channelFolders';
+import { getCalendarYearForFiscalPeriod } from '@/shared/utils/fiscalYear';
 import {
   IAttachmentFile,
   IChargeToCBURow,
@@ -68,14 +69,23 @@ interface IPagedResult {
   items: ISharePointItem[];
 }
 
+/** One field's result from AddValidateUpdateItemUsingPath; ItemId repeats on every entry. */
+interface IAddItemFormValueResult {
+  FieldName: string;
+  HasException: boolean;
+  ItemId?: number;
+  ErrorMessage?: string;
+}
+
 // `Id` is selected on every list so an edited requisition can be saved by updating the items it
 // was loaded from (see saveRequisition) instead of replacing the whole set.
 const SELECT_EXPAND = {
   PAD:
     '$select=Id,Title,TPMNo,Transaction,Fiscal,MechanicsDetails,Comments,Amount,Status,' +
     'W1_x002d_2,W3_x002d_4,Allocation,TotalSpendingTICommitted,TotalSpendingTDCommitted,' +
-    'CustomerSubGroup/Description,PromotionMonth/Description,PromotionType/Description,Category/Description' +
-    '&$expand=CustomerSubGroup,PromotionMonth,PromotionType,Category',
+    'CustomerSubGroup/Description,PromotionMonth/Description,PromotionType/Description,Category/Description,' +
+    'WorkflowStatus/Title' +
+    '&$expand=CustomerSubGroup,PromotionMonth,PromotionType,Category,WorkflowStatus',
   EXPENSES:
     '$select=Id,Title,TPMNo,Committed,Adjust,ClosedExpense,' +
     'Account_x0020_Name/Description,ExpenseType/Description&$expand=Account_x0020_Name,ExpenseType',
@@ -283,13 +293,19 @@ export class RequisitionService {
   /**
    * Uploads one file to the PA Documents library — into `folderUrl` (its Channel subfolder) when
    * given, or the library root otherwise — and tags it with the transaction's Ref No (the
-   * `Title` field getTransactionAttachments matches on). Unlike the plain lists (Detail/Expenses/
-   * Charge to CBU), a document library lets `Files/add` target the destination folder directly,
-   * so there's no separate create-then-move step here. Tagging is a second, best-effort MERGE —
-   * if it fails the file is still on SharePoint, it just won't show up under this Ref No until
+   * `Title` field getTransactionAttachments matches on) and TPMNo (kept in sync with the other
+   * PA lists — Detail/Expenses/Charge to CBU — which all carry TPMNo alongside Title). Unlike the
+   * plain lists, a document library lets `Files/add` target the destination folder directly, so
+   * there's no separate create-then-move step here. Tagging is a second, best-effort MERGE — if
+   * it fails the file is still on SharePoint, it just won't show up under this Ref No until
    * re-tagged.
    */
-  private async uploadOneAttachment(refNo: string, file: File, folderUrl?: string): Promise<void> {
+  private async uploadOneAttachment(
+    refNo: string,
+    tpmNo: string,
+    file: File,
+    folderUrl?: string,
+  ): Promise<void> {
     const listName = LIST_NAMES.PA_DOCUMENTS;
     const safeFileName = file.name.replace(/'/g, "''");
     const addUrl = folderUrl
@@ -322,7 +338,7 @@ export class RequisitionService {
 
       await api.post(
         `${getSiteUrl()}/_api/web/lists/GetByTitle('${listName}')/items(${itemId})`,
-        { Title: refNo },
+        { Title: refNo, TPMNo: tpmNo },
         { headers: { 'IF-MATCH': '*', 'X-HTTP-Method': 'MERGE' } },
       );
     } catch {
@@ -331,9 +347,11 @@ export class RequisitionService {
   }
 
   /** Uploads each file to PA Documents (into its Channel folder, if resolved), tagging it with
-   * the transaction's Ref No. Per-file failures are collected rather than aborting the batch. */
+   * the transaction's Ref No and TPMNo. Per-file failures are collected rather than aborting the
+   * batch. */
   public async uploadAttachments(
     refNo: string,
+    tpmNo: string,
     files: File[],
     folderUrl?: string,
   ): Promise<{ succeeded: string[]; failed: Array<{ name: string; message: string }> }> {
@@ -342,7 +360,7 @@ export class RequisitionService {
 
     for (const file of files) {
       try {
-        await this.uploadOneAttachment(refNo, file, folderUrl);
+        await this.uploadOneAttachment(refNo, tpmNo, file, folderUrl);
         succeeded.push(file.name);
       } catch (error) {
         failed.push({ name: file.name, message: error instanceof Error ? error.message : String(error) });
@@ -506,6 +524,12 @@ export class RequisitionService {
       // Save Draft moves the item to "Open" in the M_WorkflowStatus chain; Submit's routing is
       // owned elsewhere, so WorkflowStatus is left untouched for any other action.
       WorkflowStatusId: header.status === DRAFT_STATUS ? maps.workflowStatus[WORKFLOW_STATUS_OPEN] : undefined,
+      // Plain calendar year derived from Fiscal + PromotionMonth (e.g. Fiscal "2526" +
+      // "September" -> "2025"), written only on Save Draft alongside WorkflowStatus above.
+      Year:
+        header.status === DRAFT_STATUS
+          ? getCalendarYearForFiscalPeriod(header.fiscalYearValue, header.promotionMonthValue)
+          : undefined,
     };
   }
 
@@ -533,10 +557,13 @@ export class RequisitionService {
   }
 
   /**
-   * POSTs one item and throws a detailed error on failure (never swallow write errors). Returns
-   * the created item (its `Id`, used to move it into a Channel folder afterward).
+   * Creates one item and throws a detailed error on failure (never swallow write errors). When
+   * `folderUrl` is given, the item is created directly inside that folder — the plain `/items`
+   * POST always lands at the list root with no way to target a folder, so that case goes through
+   * `AddValidateUpdateItemUsingPath` instead (see `createItemInFolder`).
    */
-  private async createItem(listName: string, body: object): Promise<{ Id?: number }> {
+  private async createItem(listName: string, body: object, folderUrl?: string): Promise<{ Id?: number }> {
+    if (folderUrl) return this.createItemInFolder(listName, body, folderUrl);
     try {
       const response = await api.post<{ Id?: number }>(
         `${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/items`,
@@ -548,6 +575,65 @@ export class RequisitionService {
       const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
       throw new Error(`บันทึกลงรายการ "${listName}" ไม่สำเร็จ (HTTP ${status ?? 'unknown'}). ${detail}`);
     }
+  }
+
+  /**
+   * Creates an item pre-placed in `folderUrl` via `AddValidateUpdateItemUsingPath` — the one REST
+   * method that accepts a target folder on create, in exchange for every field going in as a
+   * string (`formValues`) rather than typed JSON. See `toFormValues` for the string encoding.
+   */
+  private async createItemInFolder(listName: string, body: object, folderUrl: string): Promise<{ Id?: number }> {
+    let results: IAddItemFormValueResult[];
+    try {
+      const response = await api.post<{ value: IAddItemFormValueResult[] }>(
+        `${getSiteUrl()}/_api/web/lists/getbytitle('${listName}')/AddValidateUpdateItemUsingPath`,
+        {
+          formValues: this.toFormValues(body as Record<string, unknown>),
+          bNewDocumentUpdate: false,
+          // The folder target is nested under listItemCreateInfo.FolderPath — a bare top-level
+          // `folderPath` 400s with "parameter folderPath does not exist in method
+          // AddValidateUpdateItemUsingPath" even though several blog posts show it that way.
+          listItemCreateInfo: { FolderPath: { DecodedUrl: folderUrl } },
+        },
+      );
+      results = response.data.value;
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const detail = axios.isAxiosError(error) ? JSON.stringify(error.response?.data ?? '') : String(error);
+      throw new Error(`บันทึกลงรายการ "${listName}" ไม่สำเร็จ (HTTP ${status ?? 'unknown'}). ${detail}`);
+    }
+
+    const failed = results.find((r) => r.HasException);
+    if (failed) {
+      throw new Error(`บันทึกลงรายการ "${listName}" ไม่สำเร็จ: ${failed.FieldName} - ${failed.ErrorMessage}`);
+    }
+    return { Id: results.find((r) => r.ItemId !== undefined)?.ItemId };
+  }
+
+  /**
+   * Converts a field-value object (as built by buildDetailFields/buildCbuFields/buildExpenseFields)
+   * into `formValues`: every value as a string, single lookups referenced by their display field
+   * name (the `Id` suffix stripped, matching this codebase's `<name>Id` convention) instead of
+   * `<name>Id`, and multi-value lookups joined as "id;#id;#..." — the marker format SharePoint's
+   * list-form field processing expects for lookup values, not documented in the JSON REST
+   * reference since this endpoint reuses the classic list-form code path under the hood.
+   */
+  private toFormValues(body: Record<string, unknown>): Array<{ FieldName: string; FieldValue: string }> {
+    const values: Array<{ FieldName: string; FieldValue: string }> = [];
+    for (const key of Object.keys(body)) {
+      const value = body[key];
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) {
+        values.push({ FieldName: key.replace(/Id$/, ''), FieldValue: value.map((id) => `${id};#`).join('') });
+      } else if (typeof value === 'boolean') {
+        values.push({ FieldName: key, FieldValue: value ? '1' : '0' });
+      } else if (typeof value === 'number' && key.endsWith('Id')) {
+        values.push({ FieldName: key.slice(0, -2), FieldValue: String(value) });
+      } else {
+        values.push({ FieldName: key, FieldValue: String(value) });
+      }
+    }
+    return values;
   }
 
   /**
@@ -601,11 +687,11 @@ export class RequisitionService {
    * Attachment upload failures are RETURNED, not thrown: the requisition itself is already saved
    * by then, so the caller reports them without implying the save failed.
    *
-   * Newly-created items are moved into a Channel-named subfolder of each list (creating that
-   * folder first if it doesn't exist yet), matching how these lists are organised in SharePoint.
-   * Existing items being updated are left in whatever folder they already sit in — moving them
-   * is out of scope for now. Folder resolution/creation is best-effort: if it fails for any
-   * reason the item is still created/updated correctly, it just stays at the list root.
+   * Newly-created items are created directly inside a Channel-named subfolder of each list
+   * (creating that folder first if it doesn't exist yet), matching how these lists are organised
+   * in SharePoint. Existing items being updated are left in whatever folder they already sit in
+   * — moving them is out of scope for now. Folder resolution/creation is best-effort: if it fails
+   * for any reason the item is still created at the list root instead (no folder to target).
    */
   public async saveRequisition(
     header: IRequisitionSaveHeader,
@@ -658,12 +744,11 @@ export class RequisitionService {
       } else {
         lastTransactionNo += 1;
         title = `${header.tpmNo}-${lastTransactionNo}`;
-        const created = await this.createItem(detailList, {
-          ...detailFields,
-          Title: title,
-          Transaction: lastTransactionNo,
-        });
-        if (created.Id && detailFolderUrl) await moveItemToFolder(detailList, created.Id, detailFolderUrl);
+        await this.createItem(
+          detailList,
+          { ...detailFields, Title: title, Transaction: lastTransactionNo },
+          detailFolderUrl,
+        );
       }
 
       for (const cbu of transaction.ChargeToCBU) {
@@ -672,8 +757,7 @@ export class RequisitionService {
           keptCbuIds.add(cbu.Id);
           await this.updateItem(cbuList, cbu.Id, body);
         } else {
-          const created = await this.createItem(cbuList, body);
-          if (created.Id && cbuFolderUrl) await moveItemToFolder(cbuList, created.Id, cbuFolderUrl);
+          await this.createItem(cbuList, body, cbuFolderUrl);
         }
       }
 
@@ -683,8 +767,7 @@ export class RequisitionService {
           keptExpenseIds.add(expense.Id);
           await this.updateItem(expenseList, expense.Id, body);
         } else {
-          const created = await this.createItem(expenseList, body);
-          if (created.Id && expenseFolderUrl) await moveItemToFolder(expenseList, created.Id, expenseFolderUrl);
+          await this.createItem(expenseList, body, expenseFolderUrl);
         }
       }
 
@@ -692,7 +775,7 @@ export class RequisitionService {
       // not the transaction number the form happens to be displaying.
       const stagedFiles = (transaction.pendingAttachments ?? []).filter((file): file is File => file !== null);
       if (stagedFiles.length > 0) {
-        const uploaded = await this.uploadAttachments(title, stagedFiles, attachmentFolderUrl);
+        const uploaded = await this.uploadAttachments(title, header.tpmNo, stagedFiles, attachmentFolderUrl);
         attachmentFailures.push(...uploaded.failed);
       }
     }
@@ -703,5 +786,119 @@ export class RequisitionService {
     await this.deleteRemovedItems(cbuList, storedCbus, keptCbuIds);
 
     return { ok: true, attachmentFailures };
+  }
+
+  /**
+   * Saves ONE transaction — its Detail item, plus only its own Expense/CBU rows — without
+   * touching any other transaction under the same TPMNo.
+   *
+   * Two cases, both driven by the read-only View page:
+   *  - `transaction.Id` set (already saved, WorkflowStatus still "Open" — see
+   *    RequestPA/TransactionSection.tsx): UPDATEs the Detail item and never touches
+   *    Status/WorkflowStatus at all (relies on `header.status` being left undefined, so
+   *    buildDetailFields omits both — see its Status/WorkflowStatusId/Year lines). Existing
+   *    Expense/CBU rows can only be UPDATED, never deleted — new rows added this session are
+   *    still CREATED normally — so unlike saveRequisition, there is no stored-vs-kept
+   *    reconciliation here.
+   *  - `transaction.Id` unset (added this session via "Add Promotion", never saved): CREATEs the
+   *    Detail item instead, assigning the next Ref No/Transaction number the same way
+   *    saveRequisition does. Here the caller is expected to pass `header.status = DRAFT_STATUS`
+   *    so Status/WorkflowStatus ARE set (to "Draft"/"Open"), matching a normal Save Draft.
+   */
+  public async saveOpenTransaction(
+    header: IRequisitionSaveHeader,
+    transaction: IRequisitionTransaction,
+    maps: ILookupIdMaps,
+  ): Promise<{ ok: boolean; attachmentFailures: Array<{ name: string; message: string }> }> {
+    const detailList = LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL;
+    const expenseList = LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES;
+    const cbuList = LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU;
+    const documentsList = LIST_NAMES.PA_DOCUMENTS;
+    const channelName = String(header.channelLabel || header.channelValue || '').trim();
+
+    const detailFields = this.buildDetailFields(header, transaction, maps);
+    let title: string;
+
+    if (transaction.Id) {
+      title = transaction.Title ?? `${header.tpmNo}-${transaction.tebles[0]?.Transaction ?? ''}`;
+      await this.updateItem(detailList, transaction.Id, detailFields);
+    } else {
+      const storedDetails = await this.getItemsByTPMNo(detailList, header.tpmNo, '$select=Id,Transaction');
+      const nextTransactionNo =
+        storedDetails.reduce((highest, item) => Math.max(highest, Number(item.Transaction) || 0), 0) + 1;
+      title = `${header.tpmNo}-${nextTransactionNo}`;
+      const detailFolderUrl = await resolveChannelFolder(detailList, channelName);
+      const created = await this.createItem(
+        detailList,
+        { ...detailFields, Title: title, Transaction: nextTransactionNo },
+        detailFolderUrl,
+      );
+      if (!created.Id) {
+        throw new Error(`บันทึกลงรายการ "${detailList}" ไม่สำเร็จ: ไม่พบ Id ที่สร้างใหม่`);
+      }
+    }
+
+    const [expenseFolderUrl, cbuFolderUrl, attachmentFolderUrl] = await Promise.all([
+      resolveChannelFolder(expenseList, channelName),
+      resolveChannelFolder(cbuList, channelName),
+      resolveChannelFolder(documentsList, channelName),
+    ]);
+
+    for (const cbu of transaction.ChargeToCBU) {
+      const body = this.buildCbuFields(header.tpmNo, title, cbu, maps);
+      if (cbu.Id) {
+        await this.updateItem(cbuList, cbu.Id, body);
+      } else {
+        await this.createItem(cbuList, body, cbuFolderUrl);
+      }
+    }
+
+    for (const expense of transaction.EstimatedPromotionExpense) {
+      const body = this.buildExpenseFields(header.tpmNo, title, expense, maps);
+      if (expense.Id) {
+        await this.updateItem(expenseList, expense.Id, body);
+      } else {
+        await this.createItem(expenseList, body, expenseFolderUrl);
+      }
+    }
+
+    const stagedFiles = (transaction.pendingAttachments ?? []).filter((file): file is File => file !== null);
+    const attachmentFailures: Array<{ name: string; message: string }> = [];
+    if (stagedFiles.length > 0) {
+      const uploaded = await this.uploadAttachments(title, header.tpmNo, stagedFiles, attachmentFolderUrl);
+      attachmentFailures.push(...uploaded.failed);
+    }
+
+    return { ok: true, attachmentFailures };
+  }
+
+  /**
+   * Deletes ONE already-saved transaction outright — its Detail item and all of its own
+   * Expense/CBU rows — without touching any other transaction under the same TPMNo.
+   *
+   * Used by the read-only View page's per-transaction "Delete Transaction" action, available only
+   * while that transaction's WorkflowStatus is still "Open" (see RequestPA/TransactionSection.tsx).
+   * Unlike the full create/edit flow — where removing a transaction only marks it for deletion
+   * locally, actually deleted on the next full Save — this deletes immediately: there is no later
+   * page-level "Save" step in view mode that could persist a deferred removal (attachments in PA
+   * Documents are left as-is, matching how the full flow's own deleteRemovedItems already leaves
+   * them behind today).
+   */
+  public async deleteOpenTransaction(transaction: IRequisitionTransaction): Promise<void> {
+    if (!transaction.Id) {
+      throw new Error('ไม่สามารถลบได้: ไม่พบ Id ของรายการนี้');
+    }
+
+    const expenseList = LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES;
+    const cbuList = LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU;
+    const detailList = LIST_NAMES.PROMOTION_ACTIVITIES_DETAIL;
+
+    for (const expense of transaction.EstimatedPromotionExpense) {
+      if (expense.Id) await this.deleteItemById(expenseList, expense.Id);
+    }
+    for (const cbu of transaction.ChargeToCBU) {
+      if (cbu.Id) await this.deleteItemById(cbuList, cbu.Id);
+    }
+    await this.deleteItemById(detailList, transaction.Id);
   }
 }

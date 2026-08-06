@@ -10,7 +10,13 @@ import { calculateSpendingTotals } from '@/features/pa/utils/totals';
 import { mapRawDataToForm } from '@/features/pa/utils/requisitionMapper';
 import { buildMockRawData } from '@/features/pa/utils/mockTemplateMapper';
 import { validateRequisition } from '@/features/pa/utils/requisitionValidation';
-import { showErrorAlert, showPromotionExistsAlert, showSuccessAlert, showWarningAlert } from '@/shared/utils/notify';
+import {
+  showConfirmDialog,
+  showErrorAlert,
+  showPromotionExistsAlert,
+  showSuccessAlert,
+  showWarningAlert,
+} from '@/shared/utils/notify';
 import {
   createEmptyChargeToCBURow,
   createEmptyExpenseRow,
@@ -60,6 +66,10 @@ export interface IUseRequisitionForm {
   setPromotionMonth: (option: IOption | null) => void;
   handlers: IRequisitionFormHandlers;
   save: (action: TFormAction) => Promise<void>;
+  /** Saves just one transaction from the View page — see TransactionSection's "Save Draft". */
+  saveOpenTransaction: (index: number) => Promise<void>;
+  /** Deletes just one transaction from the View page — see TransactionSection's "Delete Transaction". */
+  deleteOpenTransaction: (index: number) => Promise<void>;
   loadMockData: (fiscalYear: string, fiscalMonth: string) => void;
   /** Returns to the All Promotion Activities list (closes the view tab when opened as one). */
   goBack: () => void;
@@ -515,6 +525,87 @@ export function useRequisitionForm(): IUseRequisitionForm {
   };
 
   /**
+   * Saves just one transaction (Detail + its own Expense/CBU rows) from the read-only View page.
+   * Two cases (see RequisitionService.saveOpenTransaction):
+   *  - Already-saved transaction, WorkflowStatus still "Open" (see TransactionSection.tsx):
+   *    scoped narrowly — no other transaction is touched, and Status/WorkflowStatus are left
+   *    exactly as they are (`status` stays undefined so that method never writes either field).
+   *  - Brand-new transaction added this session via "Add Promotion" (no Id yet): CREATEd instead,
+   *    with `status: DRAFT_STATUS` so it gets Status "Draft" / WorkflowStatus "Open" just like a
+   *    normal Save Draft.
+   */
+  const saveOpenTransaction = async (index: number): Promise<void> => {
+    const transaction = transactions[index];
+    if (!transaction) return;
+
+    setIsLoading(true);
+    try {
+      const header: IRequisitionSaveHeader = {
+        tpmNo: eRequisitionNo,
+        promotionMonthValue: promotionMonth?.value,
+        fiscalYearValue: fiscalYear?.value,
+        channelValue: channel?.value ?? '',
+        channelLabel: channel?.label,
+        totalSpendingTI,
+        totalSpendingTD,
+        status: transaction.Id ? undefined : DRAFT_STATUS,
+      };
+      const service = getService();
+      const lookupMaps = lookupMapsRef.current ?? (await service.loadLookupIdMaps());
+      const result = await service.saveOpenTransaction(header, transaction, lookupMaps);
+
+      if (result.attachmentFailures.length > 0) {
+        const list = result.attachmentFailures.map((f) => `<li>${f.name}: ${f.message}</li>`).join('');
+        showWarningAlert(
+          `บันทึกข้อมูลสำเร็จ แต่แนบไฟล์ไม่สำเร็จ ${result.attachmentFailures.length} ไฟล์:` +
+            `<ul style="text-align:left;">${list}</ul>กรุณาลองกดบันทึกอีกครั้ง`,
+        );
+      } else {
+        showSuccessAlert();
+      }
+      // Reload from SharePoint so ids assigned to newly-created Expense/CBU rows come back into
+      // the form, instead of guessing at the merged shape locally.
+      await loadRequisition(eRequisitionNo);
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกข้อมูลได้';
+      showErrorAlert(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Deletes just one transaction (Detail + its own Expense/CBU rows) from the read-only View
+   * page, available while that transaction's WorkflowStatus is still "Open" (see
+   * TransactionSection.tsx). Unlike removeTransaction (used by the full create/edit flow, which
+   * only marks a row for deletion locally until the next full Save), this deletes immediately —
+   * there is no later page-level Save in view mode to persist a deferred removal — so it confirms
+   * first.
+   */
+  const deleteOpenTransaction = async (index: number): Promise<void> => {
+    const transaction = transactions[index];
+    if (!transaction) return;
+
+    const refNo = transaction.Title ?? `${eRequisitionNo}-${transaction.tebles[0]?.Transaction ?? ''}`;
+    const confirmed = await showConfirmDialog(`ต้องการลบ Transaction "${refNo}" ใช่หรือไม่? การลบนี้ไม่สามารถย้อนกลับได้`);
+    if (!confirmed) return;
+
+    setIsLoading(true);
+    try {
+      await getService().deleteOpenTransaction(transaction);
+      showSuccessAlert('ลบข้อมูลเรียบร้อย');
+      await loadRequisition(eRequisitionNo);
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      const message = error instanceof Error ? error.message : 'ไม่สามารถลบข้อมูลได้';
+      showErrorAlert(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
    * Returns to the list. View mode opens in a new tab (via window.open from AllPA), so close
    * that tab to fall back to the still-open list (which keeps its filters/pagination/scroll).
    * When opened directly (no opener), navigate in-app instead.
@@ -566,6 +657,8 @@ export function useRequisitionForm(): IUseRequisitionForm {
     setPromotionMonth,
     handlers,
     save,
+    saveOpenTransaction,
+    deleteOpenTransaction,
     loadMockData,
     goBack,
   };

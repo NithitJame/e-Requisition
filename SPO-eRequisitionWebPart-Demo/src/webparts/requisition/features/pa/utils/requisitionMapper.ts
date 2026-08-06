@@ -109,6 +109,8 @@ export function mapRawDataToForm(
         raw.majorGroupCategoryMap,
       ),
       Comment: (row.Comments as string) || '',
+      // WorkflowStatus is expanded to its Title (not Description, unlike the other lookups above).
+      workflowStatus: (row.WorkflowStatus as { Title?: string } | undefined)?.Title ?? null,
     };
   });
 

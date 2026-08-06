@@ -65,9 +65,12 @@ const CommittedInput: React.FC<{
 
 /**
  * Columns for the per-transaction summary table.
- * @param disabled read-only (view) mode — disables Promotion Type / Category / week checkboxes.
- * @param onOpenAttachment opens the read-only attachments viewer (view mode) for a Ref No.
- * @param onOpenUpload opens the attachment upload modal (create/edit mode) for this transaction.
+ * @param disabled read-only (view) mode — disables Category (always locked there).
+ * @param editableFields Promotion Type / W1-2 / W3-4 / Attachment stay enabled when this is true:
+ * always true outside view mode, and true in view mode only while this transaction's
+ * WorkflowStatus is "Open" (see TransactionSection.tsx).
+ * @param onOpenAttachment opens the read-only attachments viewer (locked transactions) for a Ref No.
+ * @param onOpenUpload opens the attachment upload modal (editable transactions) for this transaction.
  * @param tpmNo the e-Requisition prefix, used to build each row's Ref No ("TPMNo-Transaction").
  * @param transactionIndex this transaction's position in the form's transactions array — the
  * upload modal stages files on the transaction itself, so it needs the array index, not just
@@ -75,6 +78,7 @@ const CommittedInput: React.FC<{
  */
 export function getTransactionColumns(
   disabled: boolean,
+  editableFields: boolean,
   handlers: IRequisitionFormHandlers,
   onOpenAttachment: (refNo: string) => void,
   onOpenUpload: (transactionIndex: number, refNo: string) => void,
@@ -100,7 +104,7 @@ export function getTransactionColumns(
             value={row.PromotionType}
             onChange={(option) => handlers.updateTransactionRow(row, 'PromotionType', option)}
             placeholder="Please select"
-            disabled={disabled}
+            disabled={!editableFields}
           />
         </div>
       ),
@@ -137,7 +141,7 @@ export function getTransactionColumns(
             className="form-check-input"
             checked={row.W12}
             onChange={() => handlers.updateTransactionRow(row, 'W12', !row.W12)}
-            disabled={disabled}
+            disabled={!editableFields}
           />
         </div>
       ),
@@ -154,7 +158,7 @@ export function getTransactionColumns(
             className="form-check-input"
             checked={row.W34}
             onChange={() => handlers.updateTransactionRow(row, 'W34', !row.W34)}
-            disabled={disabled}
+            disabled={!editableFields}
           />
         </div>
       ),
@@ -170,10 +174,10 @@ export function getTransactionColumns(
             className="btn btn-outline-secondary rounded-xl"
             onClick={() => {
               const refNo = `${tpmNo}-${row.Transaction}`;
-              if (disabled) {
-                onOpenAttachment(refNo);
-              } else {
+              if (editableFields) {
                 onOpenUpload(transactionIndex, refNo);
+              } else {
+                onOpenAttachment(refNo);
               }
             }}
           >
@@ -217,10 +221,18 @@ export function getTransactionColumns(
   ];
 }
 
-/** Columns for the Estimated Promotion Expense table. */
+/**
+ * Columns for the Estimated Promotion Expense table.
+ * @param disabled read-only (view) mode.
+ * @param editableFields Expense Type / Committed stay enabled when this is true: always true
+ * outside view mode, and true in view mode only while the parent transaction's WorkflowStatus is
+ * "Open". A row can only be removed here if it was added this session (no `Id` yet) — pre-existing
+ * rows are never deletable from this limited inline edit, unlike the full create/edit flow.
+ */
 export function getExpenseColumns(
   parentIndex: number,
   disabled: boolean,
+  editableFields: boolean,
   handlers: IRequisitionFormHandlers,
 ): TableColumn<IExpenseRow>[] {
   return [
@@ -239,7 +251,7 @@ export function getExpenseColumns(
               value={selectedValue}
               onChange={(option) => handlers.updateExpenseRow(parentIndex, rowIndex, 'ExpenseType', option)}
               placeholder="Please select"
-              disabled={disabled}
+              disabled={!editableFields}
             />
           </div>
         );
@@ -268,7 +280,7 @@ export function getExpenseColumns(
       cell: (row, rowIndex) => (
         <CommittedInput
           value={row.Committed}
-          disabled={disabled}
+          disabled={!editableFields}
           onCommit={(value) => handlers.updateExpenseRow(parentIndex, rowIndex, 'Committed', value)}
         />
       ),
@@ -306,7 +318,7 @@ export function getExpenseColumns(
       name: '',
       cell: (row, rowIndex) => (
         <div className="w-100 text-center">
-          {rowIndex !== 0 && !disabled ? (
+          {rowIndex !== 0 && (!disabled || (editableFields && !row.Id)) ? (
             <button
               className="btn btn-sm btn-outline-danger rounded-xl me-2"
               onClick={() => handlers.removeExpenseRow(parentIndex, rowIndex)}
@@ -324,10 +336,19 @@ export function getExpenseColumns(
   ];
 }
 
-/** Columns for the Charge to CBU table. */
+/**
+ * Columns for the Charge to CBU table.
+ * @param disabled read-only (view) mode.
+ * @param editableFields % Allocation stays enabled when this is true: always true outside view
+ * mode, and true in view mode only while the parent transaction's WorkflowStatus is "Open".
+ * MajorGroup Name, though, stays locked for pre-existing rows even then — only a brand-new row
+ * (added this session, no `Id` yet) may have it set, matching how that row can also be removed
+ * again (pre-existing rows are never deletable from this limited inline edit).
+ */
 export function getChargeToCBUColumns(
   parentIndex: number,
   disabled: boolean,
+  editableFields: boolean,
   handlers: IRequisitionFormHandlers,
   majorGroupOptions: IMajorGroupOption[],
   allocationChecked: boolean,
@@ -341,6 +362,7 @@ export function getChargeToCBUColumns(
           typeof row.MajorGroupName === 'object'
             ? row.MajorGroupName
             : majorGroupOptions.find((option) => option.value === String(row.MajorGroupName)) ?? null;
+        const nameDisabled = disabled ? row.Id !== undefined || !editableFields : false;
         return (
           <div className="w-100">
             <SearchableSelect
@@ -349,7 +371,7 @@ export function getChargeToCBUColumns(
               value={selectedValue}
               onChange={(option) => handlers.updateChargeToCBURow(parentIndex, rowIndex, 'MajorGroupName', option)}
               placeholder="Please select"
-              disabled={disabled}
+              disabled={nameDisabled}
             />
           </div>
         );
@@ -378,7 +400,7 @@ export function getChargeToCBUColumns(
             className="form-check-input mt-0"
             checked={allocationChecked}
             onChange={(e) => onAllocationToggle(e.target.checked)}
-            disabled={disabled}
+            disabled={!editableFields}
           />
           <strong>% Allocation <RequiredMark /></strong>
         </div>
@@ -394,7 +416,7 @@ export function getChargeToCBUColumns(
               handlers.updateChargeToCBURow(parentIndex, rowIndex, 'Allocation', value);
             }
           }}
-          disabled={disabled}
+          disabled={!editableFields}
         />
       ),
       minWidth: '100px',
@@ -404,7 +426,7 @@ export function getChargeToCBUColumns(
       name: '',
       cell: (row, rowIndex) => (
         <div className="w-100 text-center">
-          {rowIndex !== 0 && !disabled ? (
+          {rowIndex !== 0 && (!disabled || (editableFields && !row.Id)) ? (
             <button
               className="btn btn-sm btn-outline-danger rounded-xl me-2"
               onClick={() => handlers.removeChargeToCBURow(parentIndex, rowIndex)}
