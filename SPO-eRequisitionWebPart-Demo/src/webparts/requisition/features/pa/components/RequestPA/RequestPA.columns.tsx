@@ -5,11 +5,12 @@ import * as React from 'react';
 import { TableColumn } from 'react-data-table-component';
 
 import SearchableSelect from '@/shared/components/SearchableSelect';
-import { categoryOptions, expenseOptions, promotionOptions } from '@/features/pa/constants/filterOptions';
+import { expenseOptions } from '@/features/pa/constants/filterOptions';
 import {
   IChargeToCBURow,
   IExpenseRow,
   IMajorGroupOption,
+  IOption,
   IRequisitionFormHandlers,
   ITransactionRow,
 } from '@/features/pa/types';
@@ -79,6 +80,8 @@ export function getTransactionColumns(
   onOpenUpload: (transactionIndex: number, refNo: string) => void,
   tpmNo: string,
   transactionIndex: number,
+  promotionOptions: IOption[],
+  categoryOptions: IOption[],
 ): TableColumn<ITransactionRow>[] {
   return [
     {
@@ -327,6 +330,8 @@ export function getChargeToCBUColumns(
   disabled: boolean,
   handlers: IRequisitionFormHandlers,
   majorGroupOptions: IMajorGroupOption[],
+  allocationChecked: boolean,
+  onAllocationToggle: (checked: boolean) => void,
 ): TableColumn<IChargeToCBURow>[] {
   return [
     {
@@ -366,7 +371,18 @@ export function getChargeToCBUColumns(
       grow: 1.2,
     },
     {
-      name: boldHeader(<>% Allocation <RequiredMark /></>),
+      name: (
+        <div className="d-flex align-items-center gap-1">
+          <input
+            type="checkbox"
+            className="form-check-input mt-0"
+            checked={allocationChecked}
+            onChange={(e) => onAllocationToggle(e.target.checked)}
+            disabled={disabled}
+          />
+          <strong>% Allocation <RequiredMark /></strong>
+        </div>
+      ),
       cell: (row, rowIndex) => (
         <input
           type="number"

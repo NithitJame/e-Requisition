@@ -1,8 +1,6 @@
 // Shared constants for the e-Requisition web part.
 // Extracted from RequestPA to remove magic strings/numbers (see docs/CONVENTIONS.md §1).
 
-import { IChannelShortOption } from '@/features/pa/types';
-
 // Mock Data Seeder constants (dev-only feature).
 export * from './mockData';
 
@@ -64,6 +62,9 @@ export const PA_PENDING_STATUSES: string[] = ['Waiting by Kam/AM', 'Waiting by S
 /** Text written to Promotion Activities Detail `Status` when saving as a draft. */
 export const DRAFT_STATUS = 'Draft';
 
+/** M_WorkflowStatus `Title` written to Detail `WorkflowStatus` when saving as a draft. */
+export const WORKFLOW_STATUS_OPEN = 'Open';
+
 /** Request-type code embedded in the e-Requisition number (Promotion Activity). */
 export const PA_TYPE_CODE = 'PA';
 
@@ -72,43 +73,4 @@ export const TITD_TYPE = { TI: 'TI', TD: 'TD' } as const;
 
 /** Lookup ids for the ExpenseType field in the Expenses list. */
 export const EXPENSE_TYPE_ID = { TD: 1, TI: 2 } as const;
-
-/** Channel nickname -> full channel code map, used to build the e-Requisition number. */
-export const CHANNEL_SHORT_OPTIONS: IChannelShortOption[] = [
-  { value: '7E', label: '7E', code: '7-ELEVEN' },
-  { value: 'AD', label: 'AD', code: 'ALL D' },
-  { value: 'BC', label: 'BC', code: 'BIG C' },
-  { value: 'BK', label: 'BK', code: 'BKK COOP' },
-  { value: 'BT', label: 'BT', code: 'BOOTS' },
-  { value: 'GO', label: 'GO', code: 'CFW' },
-  { value: 'CJ', label: 'CJ', code: 'CJ' },
-  { value: 'CP', label: 'CP', code: 'CPF' },
-  { value: 'CVD', label: 'CVD', code: 'CV BLITZ' },
-  { value: 'DA', label: 'DA', code: 'DA' },
-  { value: 'DN2', label: 'DN2', code: 'DIST_NOE2' },
-  { value: 'DN1', label: 'DN1', code: 'DIST_NOR1' },
-  { value: 'DN3', label: 'DN3', code: 'DIST_NOR3' },
-  { value: 'EC', label: 'EC', code: 'E-COMMERCE' },
-  { value: 'FL', label: 'FL', code: 'FOODLAND' },
-  { value: 'FS', label: 'FS', code: 'FS' },
-  { value: 'ISN', label: 'ISN', code: 'ISETAN' },
-  { value: 'JFY', label: 'JFY', code: 'JIFFY' },
-  { value: 'JUS', label: 'JUS', code: 'JUSCO' },
-  { value: 'MK', label: 'MK', code: 'MAKRO' },
-  { value: 'MMK', label: 'MMK', code: 'MEGA MARKET' },
-  { value: 'OT', label: 'OT', code: 'OTHER CVS' },
-  { value: 'OHY', label: 'OHY', code: 'OTHER HYPER' },
-  { value: 'SFM', label: 'SFM', code: 'SFM' },
-  { value: 'SSV', label: 'SSV', code: 'SUPERSAVE' },
-  { value: 'SWR', label: 'SWR', code: 'SUWANNACHARD' },
-  { value: 'TGS', label: 'TGS', code: 'TANGHUASENG' },
-  { value: 'TES', label: 'TES', code: 'TESCO' },
-  { value: 'TM', label: 'TM', code: 'THEMALL' },
-  { value: 'TOK', label: 'TOK', code: 'TOKYO' },
-  { value: 'TD', label: 'TD', code: 'TOOK DEE' },
-  { value: 'TOPS', label: 'TOPS', code: 'TOPS' },
-  { value: 'UFM', label: 'UFM', code: 'UFM FUJI' },
-  { value: 'VLA', label: 'VLA', code: 'VILLA' },
-  { value: 'WAT', label: 'WAT', code: 'WATSON' },
-];
 

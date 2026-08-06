@@ -17,9 +17,11 @@ import {
   createEmptyTransaction,
 } from '@/features/pa/utils/requisitionFactory';
 import { DRAFT_STATUS } from '@/features/pa/constants';
-import { categoryOptions, expenseOptions, promotionOptions } from '@/features/pa/constants/filterOptions';
+import { expenseOptions } from '@/features/pa/constants/filterOptions';
 import { fetchChannelOptions } from '@/shared/services/ChannelService';
 import { fetchMonthOptions } from '@/shared/services/MonthService';
+import { fetchCategoryOptions } from '@/shared/services/CategoryService';
+import { fetchPromotionTypeOptions } from '@/shared/services/PromotionTypeService';
 import {
   IExpenseOption,
   IMajorGroupOption,
@@ -48,6 +50,8 @@ export interface IUseRequisitionForm {
   promotionMonth: IOption | null;
   monthOptions: IOption[];
   majorGroupOptions: IMajorGroupOption[];
+  promotionOptions: IOption[];
+  categoryOptions: IOption[];
   eRequisitionNo: string;
   totalSpendingTI: number;
   totalSpendingTD: number;
@@ -66,13 +70,15 @@ function createOptionSet(
   channels: IOption[],
   months: IOption[],
   majorGroups: IMajorGroupOption[],
+  promotionTypes: IOption[],
+  categories: IOption[],
 ): IRequisitionOptionSet {
   return {
     channelOptions: channels,
     fiscalYearOptions: fiscalYears,
     monthOptions: months,
-    promotionOptions,
-    categoryOptions,
+    promotionOptions: promotionTypes,
+    categoryOptions: categories,
     expenseOptions,
     majorGroupOptions: majorGroups,
   };
@@ -105,6 +111,8 @@ export function useRequisitionForm(): IUseRequisitionForm {
   const [promotionMonth, setPromotionMonth] = React.useState<IOption | null>(null);
   const [monthOptions, setMonthOptions] = React.useState<IOption[]>([]);
   const [majorGroupOptions, setMajorGroupOptions] = React.useState<IMajorGroupOption[]>([]);
+  const [promotionOptions, setPromotionOptions] = React.useState<IOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = React.useState<IOption[]>([]);
   const [eRequisitionNo, setERequisitionNo] = React.useState<string>('');
   const [totalSpendingTI, setTotalSpendingTI] = React.useState<number>(0);
   const [totalSpendingTD, setTotalSpendingTD] = React.useState<number>(0);
@@ -123,27 +131,41 @@ export function useRequisitionForm(): IUseRequisitionForm {
     channels = channelOptions,
     months = monthOptions,
     majorGroups = majorGroupOptions,
+    promotionTypes = promotionOptions,
+    categories = categoryOptions,
   ): Promise<void> => {
     setIsLoading(true);
     setLoadError(null);
     setNotFound(false);
     try {
       const service = getService();
-      const [raw, loadedFiscalYears, loadedChannels, loadedMonths, loadedMajorGroups] = await Promise.all([
-        service.getRequisitionRawData(id),
-        fiscalYears.length > 0 ? Promise.resolve(fiscalYears) : service.getFiscalYearOptions(),
-        channels.length > 0 ? Promise.resolve(channels) : fetchChannelOptions(),
-        months.length > 0 ? Promise.resolve(months) : fetchMonthOptions(),
-        majorGroups.length > 0 ? Promise.resolve(majorGroups) : service.getMajorGroupOptions(),
-      ]);
+      const [raw, loadedFiscalYears, loadedChannels, loadedMonths, loadedMajorGroups, loadedPromotionTypes, loadedCategories] =
+        await Promise.all([
+          service.getRequisitionRawData(id),
+          fiscalYears.length > 0 ? Promise.resolve(fiscalYears) : service.getFiscalYearOptions(),
+          channels.length > 0 ? Promise.resolve(channels) : fetchChannelOptions(),
+          months.length > 0 ? Promise.resolve(months) : fetchMonthOptions(),
+          majorGroups.length > 0 ? Promise.resolve(majorGroups) : service.getMajorGroupOptions(),
+          promotionTypes.length > 0 ? Promise.resolve(promotionTypes) : fetchPromotionTypeOptions(),
+          categories.length > 0 ? Promise.resolve(categories) : fetchCategoryOptions(),
+        ]);
       setFiscalYearOptions(loadedFiscalYears);
       setChannelOptions(loadedChannels);
       setMonthOptions(loadedMonths);
       setMajorGroupOptions(loadedMajorGroups);
+      setPromotionOptions(loadedPromotionTypes);
+      setCategoryOptions(loadedCategories);
       const mapped = mapRawDataToForm(
         id,
         raw,
-        createOptionSet(loadedFiscalYears, loadedChannels, loadedMonths, loadedMajorGroups),
+        createOptionSet(
+          loadedFiscalYears,
+          loadedChannels,
+          loadedMonths,
+          loadedMajorGroups,
+          loadedPromotionTypes,
+          loadedCategories,
+        ),
       );
       // Empty result = the id does not exist or the user cannot access it (item-level
       // permissions). Surface a clear "not found" rather than a blank form.
@@ -177,7 +199,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
     const mapped = mapRawDataToForm(
       tpmNo,
       rawData,
-      createOptionSet(fiscalYearOptions, channelOptions, monthOptions, majorGroupOptions),
+      createOptionSet(fiscalYearOptions, channelOptions, monthOptions, majorGroupOptions, promotionOptions, categoryOptions),
     );
     setChannel(mapped.channel);
     setFiscalYear(mapped.fiscalYear);
@@ -202,7 +224,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
       const mapped = mapRawDataToForm(
         tpmNo,
         raw,
-        createOptionSet(fiscalYearOptions, channelOptions, monthOptions, majorGroupOptions),
+        createOptionSet(fiscalYearOptions, channelOptions, monthOptions, majorGroupOptions, promotionOptions, categoryOptions),
       );
       setChannel(mapped.channel);
       setFiscalYear(mapped.fiscalYear);
@@ -249,20 +271,25 @@ export function useRequisitionForm(): IUseRequisitionForm {
     const loadOptions = async (): Promise<void> => {
       try {
         const service = getService();
-        const [fiscalYears, channels, months, majorGroups] = await Promise.all([
+        const [fiscalYears, channels, months, majorGroups, promotionTypes, categories] = await Promise.all([
           service.getFiscalYearOptions(),
           fetchChannelOptions(),
           fetchMonthOptions(),
           service.getMajorGroupOptions(),
+          fetchPromotionTypeOptions(),
+          fetchCategoryOptions(),
         ]);
         setFiscalYearOptions(fiscalYears);
         setChannelOptions(channels);
         setMonthOptions(months);
         setMajorGroupOptions(majorGroups);
+        setPromotionOptions(promotionTypes);
+        setCategoryOptions(categories);
       } catch (error) {
         console.error('Error loading form options:', error);
         setLoadError(
-          'ไม่สามารถโหลดข้อมูล Channel/Fiscal Year/Promotion Month/MajorGroup Name จาก SharePoint ได้ กรุณาลองใหม่อีกครั้ง',
+          'ไม่สามารถโหลดข้อมูล Channel/Fiscal Year/Promotion Month/MajorGroup Name/Promotion Type/Category ' +
+            'จาก SharePoint ได้ กรุณาลองใหม่อีกครั้ง',
         );
       } finally {
         setIsLoading(false);
@@ -451,6 +478,7 @@ export function useRequisitionForm(): IUseRequisitionForm {
         promotionMonthValue: promotionMonth?.value,
         fiscalYearValue: fiscalYear?.value,
         channelValue: channel?.value ?? '',
+        channelLabel: channel?.label,
         totalSpendingTI,
         totalSpendingTD,
         status: action === 'Draft' ? DRAFT_STATUS : undefined,
@@ -528,6 +556,8 @@ export function useRequisitionForm(): IUseRequisitionForm {
     promotionMonth,
     monthOptions,
     majorGroupOptions,
+    promotionOptions,
+    categoryOptions,
     eRequisitionNo,
     totalSpendingTI,
     totalSpendingTD,

@@ -18,6 +18,7 @@ export function createEmptyTransactionRow(transactionNo: number): ITransactionRo
     Amount: 0,
     Status: null,
     Closed: false,
+    Allocation: false,
   };
 }
 

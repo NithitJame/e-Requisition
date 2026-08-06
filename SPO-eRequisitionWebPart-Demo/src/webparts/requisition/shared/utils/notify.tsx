@@ -28,7 +28,7 @@ export function showErrorAlert(text: string): void {
 /** Shows a success dialog after data is saved. Pass `html` to override the default message. */
 export function showSuccessAlert(html?: string): void {
   void MySwal.fire({
-    title: <p>{html ? 'สำเร็จ' : 'แก้ไขข้อมูลเรียบร้อยแล้ว'}</p>,
+    title: <p>{html ? 'สำเร็จ' : 'บันทึกข้อมูลเรียบร้อย'}</p>,
     html,
     icon: 'success',
     confirmButtonColor: CONFIRM_BUTTON_COLOR,
@@ -67,6 +67,7 @@ export function showPromotionExistsAlert(tpmNo: string): void {
     title: <p>พบข้อมูลโปรโมชันแล้ว</p>,
     html: `มีข้อมูลโปรโมชันสำหรับเดือนนี้แล้ว (${tpmNo})<br/>ระบบได้โหลดข้อมูลเดิมขึ้นมาให้แก้ไข`,
     icon: 'info',
+    customClass: { popup: 'requisition-swal requisition-swal--promotion-exists' },
     confirmButtonColor: CONFIRM_BUTTON_COLOR,
     confirmButtonText: CONFIRM_BUTTON_TEXT,
   });

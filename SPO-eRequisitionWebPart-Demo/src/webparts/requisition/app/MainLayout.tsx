@@ -56,6 +56,10 @@ const MENU_ITEMS: IMenu[] = [
 const MainLayout: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
     const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
+    // Bump this to force the currently active route's page component to remount
+    // (e.g. clicking a sidebar link that's already the active page — React Router
+    // doesn't remount on a no-op navigation, so nothing would otherwise refresh).
+    const [refreshKey, setRefreshKey] = useState<number>(0);
 
     // 🌟 2. ดึงข้อมูลตำแหน่ง URL ปัจจุบันมาใช้งาน
     const location = useLocation();
@@ -158,6 +162,14 @@ const MainLayout: React.FC = () => {
                                                     className={`list-group-item list-group-item-action bg-info-c1 text-white p-2 ps-5 un-border ${isLinkActive ? 'active-menu fw-bold' : ''
                                                         }`}
                                                     style={{ fontSize: '0.72rem' }}
+                                                    onClick={(e) => {
+                                                        if (isLinkActive) {
+                                                            // Already on this page: <Link> won't cause React Router to
+                                                            // remount, so force a refresh ourselves instead.
+                                                            e.preventDefault();
+                                                            setRefreshKey(prev => prev + 1);
+                                                        }
+                                                    }}
                                                 >
                                                     <i className={`fa ${sub.icon} me-2`}></i>
                                                     <span className="sidebar-text">{sub.title}</span>
@@ -201,9 +213,9 @@ const MainLayout: React.FC = () => {
                         <Card className='card-custom-main' style={{ marginBottom: '150px' }}>
                             <Card.Body>
                                 <Switch>
-                                    <Route exact path="/pa" component={AllPA} />
-                                    <Route path="/pa/request" component={RequestPA} />
-                                    <Route path="/pa/approve" component={ApprovePA} />
+                                    <Route exact path="/pa" key={`pa-${refreshKey}`} component={AllPA} />
+                                    <Route path="/pa/request" key={`pa-request-${refreshKey}`} component={RequestPA} />
+                                    <Route path="/pa/approve" key={`pa-approve-${refreshKey}`} component={ApprovePA} />
 
                                     <Route path="/ta/request" component={TradeAgreementView} />
                                     <Route exact path="/ta" component={AllTA} />

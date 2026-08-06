@@ -98,6 +98,7 @@ export function mapRawDataToForm(
           Amount: toNumber(row.Amount),
           Status: (row.Status as string) ?? null,
           Closed: false,
+          Allocation: Boolean(row.Allocation),
         },
       ],
       MechanicsDetails: (row.MechanicsDetails as string) || '',
@@ -113,7 +114,7 @@ export function mapRawDataToForm(
 
   // Header values come from the first row, falling back to parsing the TPM number.
   const first: ISharePointItem = padRows[0] || {};
-  const channelDesc = getLookupValue(first.CustomerSubGroup) ?? channelCodeFromTPMNo(tpmNo);
+  const channelDesc = getLookupValue(first.CustomerSubGroup) ?? channelCodeFromTPMNo(tpmNo, options.channelOptions);
   const monthDesc = getLookupValue(first.PromotionMonth) ?? monthLabelFromTPMNo(tpmNo);
 
   const totalSpendingTI = padRows.reduce((sum, row) => sum + toNumber(row.TotalSpendingTICommitted), 0);

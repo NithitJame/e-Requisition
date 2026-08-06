@@ -4,14 +4,17 @@
 import axios from 'axios';
 
 import {
+  DRAFT_STATUS,
   EXPENSE_TYPE_ID,
   LIST_NAMES,
   LIST_PAGE_SIZE,
   TITD_TYPE,
   WORKFLOW_HISTORY_FIELDS,
+  WORKFLOW_STATUS_OPEN,
 } from '@/features/pa/constants';
 import { sumCommittedByType } from '@/features/pa/utils/totals';
 import { fetchFiscalYearOptions } from '@/shared/services/FiscalYearService';
+import { WORKFLOW_STATUS_MASTER_LIST_NAME } from '@/shared/services/WorkflowStatusService';
 import api, { getSiteUrl } from '@/shared/services/api';
 import { moveItemToFolder, resolveChannelFolder } from '@/shared/utils/channelFolders';
 import {
@@ -32,7 +35,11 @@ export interface IRequisitionSaveHeader {
   tpmNo: string;
   promotionMonthValue?: string | number;
   fiscalYearValue?: string | number;
+  /** Channel dropdown's value — the Nickname short code (e.g. "7E"), used for CustomerSubGroupId. */
   channelValue: string | number;
+  /** Channel dropdown's label — the full Description (e.g. "7-ELEVEN"), used for the Channel
+   * subfolder name (matches how ApprovalService names folders from CustomerSubGroup/Description). */
+  channelLabel?: string;
   totalSpendingTI: number;
   totalSpendingTD: number;
   /** Free-text status written to the Detail item (e.g. "Draft"); omitted for Submit. */
@@ -45,12 +52,15 @@ export interface IRequisitionSaveHeader {
  * (`<InternalName>Id`), but the form only holds the display text.
  */
 export interface ILookupIdMaps {
-  customerSubGroup: Record<string, number>;
+  /** Keyed by Nickname (the Channel dropdown's value, e.g. "7E") — not Description. */
+  customerSubGroup: Record<string, { id: number; customerGroupId?: number }>;
   promotionMonth: Record<string, number>;
   promotionType: Record<string, number>;
   category: Record<string, number>;
   accountName: Record<string, number>;
   majorGroupName: Record<string, number>;
+  /** Keyed by Title (M_WorkflowStatus's display field — see PAD_LOOKUP_SELECT), not Description. */
+  workflowStatus: Record<string, number>;
 }
 
 interface IPagedResult {
@@ -63,7 +73,7 @@ interface IPagedResult {
 const SELECT_EXPAND = {
   PAD:
     '$select=Id,Title,TPMNo,Transaction,Fiscal,MechanicsDetails,Comments,Amount,Status,' +
-    'W1_x002d_2,W3_x002d_4,TotalSpendingTICommitted,TotalSpendingTDCommitted,' +
+    'W1_x002d_2,W3_x002d_4,Allocation,TotalSpendingTICommitted,TotalSpendingTDCommitted,' +
     'CustomerSubGroup/Description,PromotionMonth/Description,PromotionType/Description,Category/Description' +
     '&$expand=CustomerSubGroup,PromotionMonth,PromotionType,Category',
   EXPENSES:
@@ -135,8 +145,10 @@ export class RequisitionService {
     };
 
     const candidates = [
-      `${base}?$select=Description,SubBrand_x003a_Category&${filterQuery}$top=${LIST_PAGE_SIZE}`,
+      // Confirmed working on this tenant (fusionsoftcompany) — tried first so the common case
+      // is a single request. The other two stay as fallbacks in case the list schema changes.
       `${base}?$select=Description,SubBrand/Category&$expand=SubBrand&${filterQuery}$top=${LIST_PAGE_SIZE}`,
+      `${base}?$select=Description,SubBrand_x003a_Category&${filterQuery}$top=${LIST_PAGE_SIZE}`,
       `${base}?${filterQuery}$top=${LIST_PAGE_SIZE}`,
     ];
 
@@ -375,18 +387,66 @@ export class RequisitionService {
     return map;
   }
 
+  /**
+   * Builds Nickname -> { id, customerGroupId } for M_CustomerSubGroup. Keyed by Nickname (not
+   * Description) because that's what the Channel dropdown's value holds (see
+   * shared/services/ChannelService.ts) and what buildTpmNo/buildERequisitionNo already key on.
+   * `customerGroupId` is that row's own CustomerGroup lookup id, copied onto the Detail item so
+   * Channel -> CustomerGroup stays in sync with the master list.
+   */
+  private async loadCustomerSubGroupMap(): Promise<Record<string, { id: number; customerGroupId?: number }>> {
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${LIST_NAMES.CUSTOMER_SUB_GROUP}')/items`;
+    // M_CustomerSubGroup's CustomerGroup lookup internal name is "Customer_x0020_Group" (a space,
+    // encoded) — NOT "CustomerGroup" like the Detail list's own column of the same display name.
+    let result = await this.fetchAllPaged(
+      `${base}?$select=Id,Nickname,Customer_x0020_GroupId&$top=${LIST_PAGE_SIZE}`,
+    );
+    let hasCustomerGroupId = true;
+    if (!result.ok) {
+      // Retry without it so CustomerSubGroupId (Channel) still resolves even when CustomerGroup can't.
+      hasCustomerGroupId = false;
+      result = await this.fetchAllPaged(`${base}?$select=Id,Nickname&$top=${LIST_PAGE_SIZE}`);
+    }
+
+    const map: Record<string, { id: number; customerGroupId?: number }> = {};
+    for (const item of result.items) {
+      const nickname = item.Nickname;
+      if (nickname === null || nickname === undefined || nickname === '') continue;
+      const customerGroupId = hasCustomerGroupId ? item.Customer_x0020_GroupId : undefined;
+      map[String(nickname)] = {
+        id: Number(item.Id),
+        customerGroupId:
+          customerGroupId === null || customerGroupId === undefined ? undefined : Number(customerGroupId),
+      };
+    }
+    return map;
+  }
+
+  /** Builds Title -> Id for M_WorkflowStatus (WorkflowStatus is a Lookup keyed by Title). */
+  private async loadWorkflowStatusIdMap(): Promise<Record<string, number>> {
+    const base = `${getSiteUrl()}/_api/web/lists/GetByTitle('${WORKFLOW_STATUS_MASTER_LIST_NAME}')/items`;
+    const result = await this.fetchAllPaged(`${base}?$select=Id,Title&$top=${LIST_PAGE_SIZE}`);
+    const map: Record<string, number> = {};
+    for (const item of result.items) {
+      const title = item.Title;
+      if (title !== null && title !== undefined && title !== '') map[String(title)] = Number(item.Id);
+    }
+    return map;
+  }
+
   /** Loads every lookup master list once so the form's display values can be saved as ids. */
   public async loadLookupIdMaps(): Promise<ILookupIdMaps> {
-    const [customerSubGroup, promotionMonth, promotionType, category, accountName, majorGroupName] =
+    const [customerSubGroup, promotionMonth, promotionType, category, accountName, majorGroupName, workflowStatus] =
       await Promise.all([
-        this.loadDescriptionIdMap(LIST_NAMES.CUSTOMER_SUB_GROUP),
+        this.loadCustomerSubGroupMap(),
         this.loadDescriptionIdMap(LIST_NAMES.MONTH),
         this.loadDescriptionIdMap(LIST_NAMES.PROMOTION_TYPE),
         this.loadDescriptionIdMap(LIST_NAMES.CATEGORY),
         this.loadDescriptionIdMap(LIST_NAMES.ACCOUNT_NAME),
         this.loadDescriptionIdMap(LIST_NAMES.MAJOR_GROUP_NAME),
+        this.loadWorkflowStatusIdMap(),
       ]);
-    return { customerSubGroup, promotionMonth, promotionType, category, accountName, majorGroupName };
+    return { customerSubGroup, promotionMonth, promotionType, category, accountName, majorGroupName, workflowStatus };
   }
 
   public getFiscalYearOptions(): Promise<IOption[]> {
@@ -416,6 +476,7 @@ export class RequisitionService {
     const spendingTD = sumCommittedByType(transaction.EstimatedPromotionExpense, TITD_TYPE.TD);
     const categoryValue = summary && summary.Category ? (summary.Category.value as string | number) : undefined;
     const categoryId = this.resolveId(maps.category, categoryValue);
+    const channelEntry = maps.customerSubGroup[String(header.channelValue)];
 
     return {
       TPMNo: header.tpmNo,
@@ -424,6 +485,7 @@ export class RequisitionService {
       Comments: transaction.Comment,
       W1_x002d_2: summary ? summary.W12 : false,
       W3_x002d_4: summary ? summary.W34 : false,
+      Allocation: summary ? summary.Allocation : false,
       Status: header.status,
       // Amount = the transaction's committed spend (TI + TD).
       Amount: spendingTI + spendingTD,
@@ -433,10 +495,17 @@ export class RequisitionService {
       TotalSpendingTDCommitted: spendingTD,
       // Lookups are written by id; an unresolved value is omitted rather than rejected.
       // Multi-value lookup (Category) is a plain id array under odata=nometadata.
-      CustomerSubGroupId: this.resolveId(maps.customerSubGroup, header.channelValue),
+      CustomerSubGroupId: channelEntry?.id,
+      // CustomerGroup mirrors the Channel's own CustomerGroup lookup in M_CustomerSubGroup.
+      CustomerGroupId: channelEntry?.customerGroupId,
       PromotionMonthId: this.resolveId(maps.promotionMonth, header.promotionMonthValue),
       PromotionTypeId: this.resolveId(maps.promotionType, this.optionValue(summary?.PromotionType)),
       CategoryId: categoryId === undefined ? undefined : [categoryId],
+      // Text mirror of Category, for reports/views that read it without expanding the lookup.
+      CATEGORY_TEXT: categoryValue === undefined ? undefined : String(categoryValue),
+      // Save Draft moves the item to "Open" in the M_WorkflowStatus chain; Submit's routing is
+      // owned elsewhere, so WorkflowStatus is left untouched for any other action.
+      WorkflowStatusId: header.status === DRAFT_STATUS ? maps.workflowStatus[WORKFLOW_STATUS_OPEN] : undefined,
     };
   }
 
@@ -547,7 +616,10 @@ export class RequisitionService {
     const expenseList = LIST_NAMES.PROMOTION_ACTIVITIES_EXPENSES;
     const cbuList = LIST_NAMES.PROMOTION_ACTIVITIES_CHARGE_TO_CBU;
     const documentsList = LIST_NAMES.PA_DOCUMENTS;
-    const channelName = String(header.channelValue ?? '').trim();
+    // Folders are named by the Channel's full Description (e.g. "7-ELEVEN"), matching
+    // ApprovalService's CustomerSubGroup/Description-based folder naming — NOT the Nickname
+    // short code (channelValue, e.g. "7E") used elsewhere for the e-Requisition number/lookup id.
+    const channelName = String(header.channelLabel || header.channelValue || '').trim();
 
     // What is stored right now, so removals can be detected and new Ref Nos can't collide.
     const [storedDetails, storedExpenses, storedCbus] = await Promise.all([

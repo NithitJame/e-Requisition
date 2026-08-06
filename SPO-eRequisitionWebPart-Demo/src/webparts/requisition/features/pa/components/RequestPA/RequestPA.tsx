@@ -108,6 +108,8 @@ const RequestPA: React.FC = () => {
             disabled={form.disabledAction}
             handlers={form.handlers}
             majorGroupOptions={form.majorGroupOptions}
+            promotionOptions={form.promotionOptions}
+            categoryOptions={form.categoryOptions}
             tpmNo={form.eRequisitionNo}
             isHighlighted={
               form.selectedTransaction !== null &&

@@ -18,16 +18,6 @@ export interface IExpenseOption extends IOption {
 }
 
 /**
- * Maps a 2-character channel nickname (e.g. "7E") to its full channel
- * code/name (e.g. "7-ELEVEN"). Used to build the e-Requisition number.
- */
-export interface IChannelShortOption {
-  value: string;
-  label: string;
-  code: string;
-}
-
-/**
  * A MajorGroup Name option for the Charge-to-CBU table. `category` is the M_MajorGroupName
  * "SubBrand:Category" value, applied to the row's read-only Category cell when this option
  * is selected.
@@ -50,6 +40,8 @@ export interface ITransactionRow {
   Amount: number;
   Status: string | null;
   Closed: boolean;
+  /** Charge-to-CBU "% Allocation" checkbox for this transaction (Detail.Allocation). */
+  Allocation: boolean;
 }
 
 /** One estimated promotion expense line. Committed/Adjust may be raw input strings. */

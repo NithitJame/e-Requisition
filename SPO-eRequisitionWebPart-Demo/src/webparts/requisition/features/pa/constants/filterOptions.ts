@@ -1,13 +1,10 @@
-// Typed accessors for the static filter option data in shared/data/dataFilter.json.
-// Channel/Month/WorkflowStatus are no longer here — they're read live from SharePoint master
-// lists (see shared/services/ChannelService.ts, MonthService.ts, WorkflowStatusService.ts).
-
+// Typed accessor for the static ExpenseType option data in shared/data/dataFilter.json.
+// Channel/Month/WorkflowStatus/Category/PromotionType are read live from SharePoint master
+// lists instead (see shared/services/ChannelService.ts, MonthService.ts, WorkflowStatusService.ts,
+// CategoryService.ts, PromotionTypeService.ts). ExpenseType stays static because its TI/TD
+// grouping isn't a column on M_ExpenseType — see mockData.ts's EXPENSE_TYPE_DESCRIPTION_BY_ID
+// for the same constraint on the id-keyed variant.
 import dataFilter from '@/shared/data/dataFilter.json';
-import { IExpenseOption, IOption } from '@/features/pa/types';
+import { IExpenseOption } from '@/features/pa/types';
 
-export const promotionOptions: IOption[] = dataFilter.promotionOptions;
-export const categoryOptions: IOption[] = dataFilter.Category;
 export const expenseOptions: IExpenseOption[] = dataFilter.ExpenseType;
-
-// Listing filter options moved to shared; re-exported so existing pa imports keep working.
-export { eRequisitionNoOptions } from '@/shared/constants/listingFilterOptions';

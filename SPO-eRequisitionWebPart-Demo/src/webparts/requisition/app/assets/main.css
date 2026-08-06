@@ -315,6 +315,10 @@ article>div {
     font-size: 0.8rem;
 }
 
+.swal2-popup.requisition-swal--promotion-exists {
+    width: 30em;
+}
+
 @media (max-width: 575.98px) {
     #sidebar-wrapper {
         width: min(220px, 80vw);

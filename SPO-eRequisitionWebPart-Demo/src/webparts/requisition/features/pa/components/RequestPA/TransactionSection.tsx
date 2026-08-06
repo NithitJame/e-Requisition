@@ -6,7 +6,7 @@ import * as React from 'react';
 import MyDataTable from '@/shared/components/DataTable';
 import { TITD_TYPE } from '@/features/pa/constants';
 import { sumCommittedByType } from '@/features/pa/utils/totals';
-import { IMajorGroupOption, IRequisitionFormHandlers, IRequisitionTransaction } from '@/features/pa/types';
+import { IMajorGroupOption, IOption, IRequisitionFormHandlers, IRequisitionTransaction } from '@/features/pa/types';
 import {
   getChargeToCBUColumns,
   getExpenseColumns,
@@ -20,6 +20,8 @@ interface ITransactionSectionProps {
   disabled: boolean;
   handlers: IRequisitionFormHandlers;
   majorGroupOptions: IMajorGroupOption[];
+  promotionOptions: IOption[];
+  categoryOptions: IOption[];
   /** e-Requisition prefix (TPMNo), used to build this transaction's Ref No. */
   tpmNo: string;
   /** True for the transaction selected from the All Promotion Activities table. */
@@ -38,6 +40,8 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
   disabled,
   handlers,
   majorGroupOptions,
+  promotionOptions,
+  categoryOptions,
   tpmNo,
   isHighlighted,
   onOpenHistory,
@@ -75,7 +79,16 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
       <div className={`col-12 mt-3 ${isHighlighted ? styles.highlighted : ''}`} ref={sectionRef}>
         <MyDataTable
           data={transaction.tebles}
-          columns={getTransactionColumns(disabled, handlers, onOpenAttachment, onOpenUpload, tpmNo, index)}
+          columns={getTransactionColumns(
+            disabled,
+            handlers,
+            onOpenAttachment,
+            onOpenUpload,
+            tpmNo,
+            index,
+            promotionOptions,
+            categoryOptions,
+          )}
           isPagination={false}
         />
       </div>
@@ -210,7 +223,14 @@ const TransactionSection: React.FC<ITransactionSectionProps> = ({
             <div className="border rounded">
               <MyDataTable
                 data={transaction.ChargeToCBU}
-                columns={getChargeToCBUColumns(index, disabled, handlers, cbuMajorGroupOptions)}
+                columns={getChargeToCBUColumns(
+                  index,
+                  disabled,
+                  handlers,
+                  cbuMajorGroupOptions,
+                  transaction.tebles[0]?.Allocation ?? false,
+                  (checked) => handlers.updateTransactionRow(transaction.tebles[0], 'Allocation', checked),
+                )}
                 isPagination={false}
               />
             </div>
